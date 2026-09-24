@@ -5,6 +5,12 @@
 (function () {
   "use strict";
 
+  const SYNC_TOKEN_KEY = "afsa_algebra_gh_token";
+  const SYNC_OWNER = "sabirpatel";
+  const SYNC_REPO = "AfsasWorld";
+  const SYNC_LABEL = "afsa-progress";
+  let lastSessionPayload = null;
+
   const STORAGE_KEY = "afsa-algebra-v1";
   const PLACEMENT_LEN = 6;
   const PRACTICE_LEN = 10;
@@ -519,6 +525,7 @@
   const $ = (sel) => document.querySelector(sel);
   const screens = {
     welcome: $("#screen-welcome"),
+    settings: $("#screen-settings"),
     placement: $("#screen-placement"),
     practice: $("#screen-practice"),
     summary: $("#screen-summary"),
@@ -825,6 +832,7 @@
     $("#btn-summary-continue").textContent = "Start practice →";
     $("#btn-summary-continue").onclick = () => startPractice(true);
     showScreen("summary");
+    maybeAutoSync("placement", state.placementResults);
   }
 
   function finishPractice() {
@@ -844,6 +852,7 @@
     $("#btn-summary-continue").textContent = "Practice again →";
     $("#btn-summary-continue").onclick = () => startPractice(true);
     showScreen("summary");
+    maybeAutoSync("practice", state.practiceResults);
   }
 
   function renderSummaryStats(results, level) {
@@ -885,6 +894,127 @@
     };
   }
 
+
+  // ─── GitHub progress sync ────────────────────────────────
+  function getSyncToken() {
+    try { return localStorage.getItem(SYNC_TOKEN_KEY) || ""; } catch (_) { return ""; }
+  }
+  function setSyncToken(t) {
+    try {
+      if (t) localStorage.setItem(SYNC_TOKEN_KEY, t);
+      else localStorage.removeItem(SYNC_TOKEN_KEY);
+    } catch (_) {}
+  }
+
+  function buildSessionPayload(kind, results) {
+    const correct = results.filter((r) => r.correct).length;
+    const total = results.length;
+    const acc = total ? Math.round((100 * correct) / total) : 0;
+    const missedTopics = [...new Set(results.filter((r) => !r.correct).map((r) => r.topic))];
+    const focusTopics = [...new Set(results.map((r) => r.topic))];
+    return {
+      app: "Afsa Helper · Algebra",
+      kind, // placement | practice
+      learner: state.name || "Afsa",
+      when: new Date().toISOString(),
+      level: state.level,
+      levelName: LEVEL_NAMES[state.level] || "",
+      correct,
+      total,
+      accuracy: acc,
+      streak: state.streak,
+      bestStreak: state.bestStreak,
+      sessionsCompleted: state.sessionsCompleted,
+      missedTopics,
+      focusTopics,
+      results: results.map((r) => ({
+        topic: r.topic,
+        level: r.level,
+        correct: !!r.correct,
+        display: r.display || r.equation || "",
+      })),
+    };
+  }
+
+  function sessionIssueBody(payload) {
+    const miss = payload.missedTopics.length
+      ? payload.missedTopics.map((t) => `- ${t}`).join("\n")
+      : "- (none)";
+    return [
+      `## ${payload.kind === "placement" ? "Placement" : "Practice"} session`,
+      "",
+      `- **Learner:** ${payload.learner}`,
+      `- **When:** ${payload.when}`,
+      `- **Level:** ${payload.level} (${payload.levelName})`,
+      `- **Score:** ${payload.correct}/${payload.total} (${payload.accuracy}%)`,
+      `- **Best streak:** ${payload.bestStreak}`,
+      "",
+      "### Missed topics",
+      miss,
+      "",
+      "### Focus topics this session",
+      payload.focusTopics.map((t) => `- ${t}`).join("\n") || "- (n/a)",
+      "",
+      "<details><summary>Session JSON</summary>",
+      "",
+      "```json",
+      JSON.stringify(payload, null, 2),
+      "```",
+      "",
+      "</details>",
+      "",
+      "_Saved by Afsa Helper · Algebra for coaching._",
+    ].join("\n");
+  }
+
+  async function syncSessionToGitHub(payload) {
+    const token = getSyncToken();
+    if (!token) {
+      return { ok: false, error: "Add a GitHub token in Settings first." };
+    }
+    const title = `[${payload.kind}] ${payload.learner} · L${payload.level} · ${payload.accuracy}% · ${payload.when.slice(0, 16).replace("T", " ")}`;
+    const body = sessionIssueBody(payload);
+    const res = await fetch(`https://api.github.com/repos/${SYNC_OWNER}/${SYNC_REPO}/issues`, {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: JSON.stringify({ title, body, labels: [SYNC_LABEL] }),
+    });
+    if (!res.ok) {
+      let detail = "";
+      try { detail = (await res.json()).message || ""; } catch (_) {}
+      return { ok: false, error: `GitHub ${res.status}${detail ? ": " + detail : ""}` };
+    }
+    const data = await res.json();
+    return { ok: true, url: data.html_url, number: data.number };
+  }
+
+  function setSyncStatus(el, msg, cls) {
+    if (!el) return;
+    el.textContent = msg;
+    el.className = "sync-status" + (cls ? " " + cls : "");
+  }
+
+  async function maybeAutoSync(kind, results) {
+    lastSessionPayload = buildSessionPayload(kind, results);
+    const status = $("#sync-status");
+    if (!getSyncToken()) {
+      setSyncStatus(status, "Session ready. Parent: open Settings to connect GitHub, then tap Save session.", "");
+      return;
+    }
+    setSyncStatus(status, "Saving session to AfsasWorld…", "pending");
+    const result = await syncSessionToGitHub(lastSessionPayload);
+    if (result.ok) {
+      setSyncStatus(status, `Saved to AfsasWorld as issue #${result.number}. Afsa Helper can review it.`, "ok");
+    } else {
+      setSyncStatus(status, result.error || "Save failed.", "err");
+    }
+  }
+
   // ─── Wire events ─────────────────────────────────────────
   function bind() {
     $("#btn-start-placement").addEventListener("click", startPlacement);
@@ -917,6 +1047,59 @@
     $("#btn-home").addEventListener("click", () => {
       showScreen("welcome");
       refreshWelcome();
+    });
+
+
+    const btnSettings = $("#btn-settings");
+    if (btnSettings) btnSettings.addEventListener("click", () => {
+      const tok = getSyncToken();
+      const input = $("#sync-token");
+      input.value = tok ? "••••••••••••" : "";
+      input.dataset.hasToken = tok ? "1" : "0";
+      setSyncStatus($("#settings-status"), tok ? "Token saved on this device." : "No token yet.", tok ? "ok" : "");
+      showScreen("settings");
+    });
+    const btnSettingsBack = $("#btn-settings-back");
+    if (btnSettingsBack) btnSettingsBack.addEventListener("click", () => {
+      showScreen("welcome");
+      refreshWelcome();
+    });
+    const syncTokenInput = $("#sync-token");
+    if (syncTokenInput) syncTokenInput.addEventListener("focus", () => {
+      if (syncTokenInput.dataset.hasToken === "1") {
+        syncTokenInput.value = "";
+        syncTokenInput.dataset.hasToken = "0";
+      }
+    });
+    const btnSaveSettings = $("#btn-save-settings");
+    if (btnSaveSettings) btnSaveSettings.addEventListener("click", () => {
+      const v = $("#sync-token").value.trim();
+      if (!v || v.startsWith("••")) {
+        setSyncStatus($("#settings-status"), "Paste a new token to save.", "err");
+        return;
+      }
+      setSyncToken(v);
+      $("#sync-token").value = "••••••••••••";
+      $("#sync-token").dataset.hasToken = "1";
+      setSyncStatus($("#settings-status"), "Saved. New sessions will sync to AfsasWorld.", "ok");
+    });
+    const btnClearToken = $("#btn-clear-token");
+    if (btnClearToken) btnClearToken.addEventListener("click", () => {
+      setSyncToken("");
+      $("#sync-token").value = "";
+      $("#sync-token").dataset.hasToken = "0";
+      setSyncStatus($("#settings-status"), "Token cleared from this device.", "");
+    });
+    const btnSyncSession = $("#btn-sync-session");
+    if (btnSyncSession) btnSyncSession.addEventListener("click", async () => {
+      if (!lastSessionPayload) {
+        setSyncStatus($("#sync-status"), "No session to save yet.", "err");
+        return;
+      }
+      setSyncStatus($("#sync-status"), "Saving…", "pending");
+      const result = await syncSessionToGitHub(lastSessionPayload);
+      if (result.ok) setSyncStatus($("#sync-status"), `Saved as issue #${result.number}.`, "ok");
+      else setSyncStatus($("#sync-status"), result.error || "Save failed.", "err");
     });
 
     $("#btn-reset").addEventListener("click", () => {
