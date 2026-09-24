@@ -18,6 +18,9 @@
           <div class="tagline">Adaptive practice · your pace</div>
         </div>
       </div>
+      <div class="header-actions">
+        <button type="button" class="btn-ghost settings-btn" id="btn-settings" title="Parent settings">Settings</button>
+      </div>
       <div class="stats-bar hidden" id="stats-bar">
         <div class="stat-chip streak" id="stat-streak">🔥 <strong>0</strong></div>
         <div class="stat-chip level" id="stat-level">Level <strong>3</strong>/6</div>
@@ -195,10 +198,40 @@
 
         <div id="summary-review"></div>
 
+        <div id="sync-panel" class="sync-panel">
+          <p id="sync-status" class="sync-status" role="status"></p>
+          <div class="btn-row">
+            <button type="button" class="btn-teal" id="btn-sync-session">Save session to AfsasWorld</button>
+          </div>
+          <p style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted)">Creates a private-to-you progress note as a GitHub Issue labeled <code>afsa-progress</code>.</p>
+        </div>
+
         <div class="btn-row">
           <button type="button" class="btn-primary" id="btn-summary-continue">Continue →</button>
           <button type="button" class="btn-secondary" onclick="document.getElementById('btn-home').click()">Home</button>
         </div>
+      </div>
+    </section>
+
+    <!-- PARENT SETTINGS / SYNC -->
+    <section id="screen-settings" class="screen" aria-label="Parent settings">
+      <div class="card">
+        <h2>Parent settings</h2>
+        <p class="lead">Save Afsa’s practice sessions to AfsasWorld on GitHub so Afsa Helper can review them and suggest next steps.</p>
+        <div class="name-form" style="text-align:left">
+          <label for="sync-token">GitHub token (stored only on this device)</label>
+          <input id="sync-token" type="password" autocomplete="off" placeholder="ghp_… or github_pat_…" />
+          <p style="margin-top:0.55rem;font-size:0.78rem;color:var(--muted);line-height:1.45">
+            Use a fine-grained token with access to <strong>sabirpatel/AfsasWorld</strong> and
+            <strong>Issues: Read and write</strong>. Never commit this token. Afsa does not need to see this screen.
+          </p>
+        </div>
+        <div class="btn-row" style="margin-top:1rem">
+          <button type="button" class="btn-primary" id="btn-save-settings">Save settings</button>
+          <button type="button" class="btn-secondary" id="btn-clear-token">Clear token</button>
+          <button type="button" class="btn-ghost" id="btn-settings-back">← Back</button>
+        </div>
+        <p id="settings-status" class="sync-status" role="status"></p>
       </div>
     </section>
   </div>
