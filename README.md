@@ -1,6 +1,6 @@
 # AfsasWorld
 
-Shared home for Afsa’s school projects — practice apps, quizzes, tests, and assignments.
+Shared home for Afsa school projects: practice apps, quizzes, tests, and assignments.
 
 **Live site:** https://sabirpatel.github.io/AfsasWorld/
 
@@ -8,20 +8,16 @@ Shared home for Afsa’s school projects — practice apps, quizzes, tests, and 
 
 | Path | What | Status |
 |------|------|--------|
-| [`algebra/`](https://sabirpatel.github.io/AfsasWorld/algebra/) | Adaptive algebra practice (placement + adaptive questions; GitHub Issues sync for coaching) | Live |
+| [algebra/](https://sabirpatel.github.io/AfsasWorld/algebra/) | Adaptive algebra practice (placement + adaptive questions; GitHub Issues sync for coaching) | Live |
 | Reading | Comprehension practice | Planned |
-| Tests & assignments | Parent-assigned work | Planned |
+| Tests and assignments | Parent-assigned work | Planned |
 
 ## Progress sync (algebra)
 
-After practice, sessions can sync to GitHub Issues labeled `afsa-progress` (parent Settings → fine-grained PAT with Issues read/write on this repo only). **Afsa Helper** reads those issues to coach.
+After practice, sessions can sync to GitHub Issues labeled `afsa-progress` (parent Settings: fine-grained PAT with Issues read/write on this repo only). Afsa Helper reads those issues to coach.
 
 ## Layout
 
-```
-/
-  index.html      ← home (topic links)
-  home.css
-  algebra/        ← adaptive algebra app
-  .nojekyll
-```
+- `index.html` / `home.css` — home page with topic links
+- `algebra/` — adaptive algebra app
+- `.nojekyll` — static GitHub Pages (no Jekyll)
