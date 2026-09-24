@@ -615,3 +615,24 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .header { flex-direction: column; align-items: flex-start; }
 }
+
+
+/* Sync / settings */
+.header-actions { margin-left: auto; }
+.settings-btn { font-size: 0.8rem; padding: 0.35rem 0.65rem; }
+.sync-panel {
+  margin: 1rem 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+.sync-status {
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+  color: var(--ink-soft);
+  min-height: 1.2em;
+}
+.sync-status.ok { color: var(--success, #15803d); font-weight: 600; }
+.sync-status.err { color: #b91c1c; font-weight: 600; }
+.sync-status.pending { color: #0369a1; }
