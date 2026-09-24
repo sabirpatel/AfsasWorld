@@ -1,15 +1,27 @@
 # AfsasWorld
 
-Shared home for Afsa’s school projects — practice apps, worksheets, and learning tools.
+Shared home for Afsa’s school projects — practice apps, quizzes, tests, and assignments.
 
-## Live apps
+**Live site:** https://sabirpatel.github.io/AfsasWorld/
 
-- **Algebra (adaptive practice):** [Open Afsa Algebra](https://sabirpatel.github.io/AfsasWorld/algebra/)
+## Topics
+
+| Path | What | Status |
+|------|------|--------|
+| [`algebra/`](https://sabirpatel.github.io/AfsasWorld/algebra/) | Adaptive algebra practice (placement + adaptive questions; GitHub Issues sync for coaching) | Live |
+| Reading | Comprehension practice | Planned |
+| Tests & assignments | Parent-assigned work | Planned |
+
+## Progress sync (algebra)
+
+After practice, sessions can sync to GitHub Issues labeled `afsa-progress` (parent Settings → fine-grained PAT with Issues read/write on this repo only). **Afsa Helper** reads those issues to coach.
 
 ## Layout
 
-| Path | What |
-|------|------|
-| `algebra/` | Adaptive algebra practice (placement + adaptive questions) |
-
-Progress from practice sessions can be exported from the app and shared with Afsa Helper for coaching.
+```
+/
+  index.html      ← home (topic links)
+  home.css
+  algebra/        ← adaptive algebra app
+  .nojekyll
+```
