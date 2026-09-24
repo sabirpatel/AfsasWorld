@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#c45c26" />
+  <meta name="description" content="Afsa Helper · Algebra — adaptive practice for middle-school algebra, including rational equations." />
+  <title>Afsa Helper · Algebra</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">A</div>
+        <div>
+          <h1>Afsa Helper · Algebra</h1>
+          <div class="tagline">Adaptive practice · your pace</div>
+        </div>
+      </div>
+      <div class="stats-bar hidden" id="stats-bar">
+        <div class="stat-chip streak" id="stat-streak">🔥 <strong>0</strong></div>
+        <div class="stat-chip level" id="stat-level">Level <strong>3</strong>/6</div>
+        <div class="stat-chip" id="stat-acc">Accuracy <strong>—</strong></div>
+      </div>
+    </header>
+
+    <!-- WELCOME -->
+    <section id="screen-welcome" class="screen active" aria-label="Welcome">
+      <div class="card welcome-hero">
+        <div class="welcome-emoji" aria-hidden="true">📐</div>
+        <h2>Ready to level up your algebra?</h2>
+        <p class="lead">
+          Short placement, then adaptive practice that gets harder when you're crushing it —
+          and gentler (with clear steps) when something's tricky. Built especially for equations
+          like <strong>374/(x−10)=17</strong>.
+        </p>
+
+        <div class="name-form" style="text-align:left">
+          <label for="name-input">Your name</label>
+          <input id="name-input" type="text" maxlength="24" value="Afsa" autocomplete="nickname" />
+        </div>
+
+        <p id="resume-note" class="hidden" style="margin-top:0.85rem;font-size:0.88rem;color:var(--teal);font-weight:600"></p>
+
+        <ul class="topic-preview" aria-label="Topics you'll practice">
+          <li><span class="topic-num">1</span> One-step equations</li>
+          <li><span class="topic-num">2</span> Two-step equations</li>
+          <li><span class="topic-num">3</span> Both sides &amp; distribute</li>
+          <li><span class="topic-num">4</span> Fractions / clear denominators</li>
+          <li><span class="topic-num">5</span> Rational: variable in the denominator ★</li>
+          <li><span class="topic-num">6</span> Harder rationals &amp; undefined checks</li>
+        </ul>
+
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-start-placement">Start placement check</button>
+          <button type="button" class="btn-secondary" id="btn-skip-practice">Skip to practice</button>
+        </div>
+        <p style="margin-top:0.85rem;font-size:0.8rem;color:var(--muted)">
+          Placement is about 6 quick questions. Progress saves on this device.
+        </p>
+      </div>
+      <div class="footer-actions">
+        <button type="button" class="btn-ghost" id="btn-reset">Reset saved progress</button>
+      </div>
+    </section>
+
+    <!-- PLACEMENT -->
+    <section id="screen-placement" class="screen" aria-label="Placement">
+      <div class="card">
+        <span class="mode-badge placement" id="p-mode-badge">Placement check</span>
+        <p class="lead" id="p-greet" style="margin-bottom:0.75rem"></p>
+
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="p-progress-label">Question 1 of 6</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="p-progress-fill"></div></div>
+        </div>
+
+        <div class="level-dots" id="p-dots" aria-hidden="true"></div>
+        <div class="level-names" id="p-level-name"></div>
+
+        <div class="topic-label" id="p-topic"></div>
+        <div class="equation-box">
+          <div>
+            <div class="equation" id="p-equation"></div>
+            <div class="excluded-note hidden" id="p-excluded"></div>
+          </div>
+        </div>
+
+        <label for="p-answer">Solve for x</label>
+        <input id="p-answer" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 32" />
+
+        <div class="btn-row" id="p-actions-answer">
+          <button type="button" class="btn-primary" id="p-submit">Check answer</button>
+        </div>
+
+        <div id="p-feedback" class="feedback" role="status"></div>
+
+        <div class="btn-row hidden" id="p-actions-next">
+          <button type="button" class="btn-secondary" id="p-similar">Try a similar one</button>
+          <button type="button" class="btn-teal" id="p-next">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRACTICE -->
+    <section id="screen-practice" class="screen" aria-label="Practice">
+      <div class="card">
+        <span class="mode-badge" id="q-mode-badge">Practice</span>
+        <p class="lead" id="q-greet" style="margin-bottom:0.75rem"></p>
+
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="q-progress-label">Question 1 of 10</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="q-progress-fill"></div></div>
+        </div>
+
+        <div class="level-dots" id="q-dots" aria-hidden="true"></div>
+        <div class="level-names" id="q-level-name"></div>
+
+        <div class="topic-label" id="q-topic"></div>
+        <div class="equation-box">
+          <div>
+            <div class="equation" id="q-equation"></div>
+            <div class="excluded-note hidden" id="q-excluded"></div>
+          </div>
+        </div>
+
+        <label for="q-answer">Solve for x</label>
+        <input id="q-answer" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 32" />
+
+        <div class="btn-row" id="q-actions-answer">
+          <button type="button" class="btn-primary" id="q-submit">Check answer</button>
+        </div>
+
+        <div id="q-feedback" class="feedback" role="status"></div>
+
+        <div class="btn-row hidden" id="q-actions-next">
+          <button type="button" class="btn-secondary" id="q-similar">Try a similar one</button>
+          <button type="button" class="btn-teal" id="q-next">Next →</button>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button type="button" class="btn-ghost" id="btn-home">← Back to home</button>
+      </div>
+    </section>
+
+    <!-- WORKED EXAMPLE (after 2 wrong in a row) -->
+    <section id="screen-example" class="screen" aria-label="Worked example">
+      <div class="card">
+        <h2>Let's look at a worked example</h2>
+        <p class="lead">Two tough ones in a row — here's a full walkthrough before the next question.</p>
+        <div class="worked-example">
+          <h3>Example</h3>
+          <div class="eq" id="ex-equation"></div>
+          <ol class="steps" id="ex-steps"></ol>
+          <p style="margin-top:0.75rem;font-weight:700;color:#0369a1" id="ex-answer"></p>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-ex-continue">Back to practice →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section id="screen-summary" class="screen" aria-label="Summary">
+      <div class="card">
+        <h2 id="summary-title">Session complete!</h2>
+        <p class="lead" id="summary-lead"></p>
+
+        <div class="level-dots" id="sum-dots" aria-hidden="true"></div>
+        <div class="level-names" id="sum-level-name"></div>
+
+        <div class="summary-grid">
+          <div class="summary-stat">
+            <div class="num" id="sum-correct">0/10</div>
+            <div class="lbl">Correct</div>
+          </div>
+          <div class="summary-stat">
+            <div class="num" id="sum-accuracy">0%</div>
+            <div class="lbl">Accuracy</div>
+          </div>
+          <div class="summary-stat">
+            <div class="num" id="sum-level">3</div>
+            <div class="lbl">Level</div>
+          </div>
+          <div class="summary-stat">
+            <div class="num" id="sum-streak">0</div>
+            <div class="lbl">Best streak</div>
+          </div>
+        </div>
+
+        <div id="summary-review"></div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-summary-continue">Continue →</button>
+          <button type="button" class="btn-secondary" onclick="document.getElementById('btn-home').click()">Home</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
