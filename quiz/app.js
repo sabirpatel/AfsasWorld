@@ -453,16 +453,19 @@
       btn.className = "test-card";
       btn.setAttribute("data-test-id", t.id);
       const qCount = Array.isArray(t.questions) ? t.questions.length : 0;
+      const metaBits = [t.subject || "General", t.topic].filter(Boolean).map(escapeHtml);
       btn.innerHTML =
-        `<div class="meta">${escapeHtml(t.subject || "General")}` +
-        (t.topic ? ` · ${escapeHtml(t.topic)}` : "") +
-        `</div>` +
+        `<div class="test-card-top">` +
+        `<div class="test-card-main">` +
+        `<div class="meta">${metaBits.join(" · ")}</div>` +
         `<h3>${escapeHtml(t.name || t.id)}</h3>` +
-        `<p>${escapeHtml(t.description || "")}</p>` +
-        `<div class="chip-row">` +
-        `<span class="chip live">Published</span>` +
-        `<span class="chip">${qCount} question${qCount === 1 ? "" : "s"}</span>` +
-        `</div>`;
+        `</div>` +
+        `<span class="chip qcount">${qCount} question${qCount === 1 ? "" : "s"}</span>` +
+        `</div>` +
+        (t.description
+          ? `<p class="test-card-desc">${escapeHtml(t.description)}</p>`
+          : "") +
+        `<span class="test-card-go" aria-hidden="true">→</span>`;
       btn.addEventListener("click", () => openIntro(t.id));
       listEl.appendChild(btn);
     });
