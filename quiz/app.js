@@ -1,8 +1,8 @@
-/* AfsasWorld Quizzes — JSONBin-backed quiz player (CRUD attempts) */
+/* AfsasWorld Quizzes — JSONBin public bin AfsaQuizPublic (CRUD attempts) */
 (function () {
   "use strict";
 
-  const BIN_ID = "6ab6df70ac6210605af59ddd";
+  const BIN_ID = "6ab6e407ffd5d160532f453f";
   const BIN_LATEST = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?meta=false`;
   const BIN_PUT = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
   const KEY_STORAGE = "afsa_jsonbin_key";
@@ -56,16 +56,14 @@
   }
 
   function requireKeyHeaders() {
+    const headers = {};
     const key = getStoredKey();
-    if (!key) {
-      const err = new Error("JSONBin Master Key required. Open Settings and paste the parent key.");
-      err.code = "NO_KEY";
-      throw err;
+    if (key) {
+      // Optional: parent may still paste a key for private bins / extra auth
+      headers["X-Master-Key"] = key;
+      headers["X-Access-Key"] = key;
     }
-    return {
-      "X-Master-Key": key,
-      "X-Access-Key": key,
-    };
+    return headers;
   }
 
   function shuffle(arr) {
@@ -123,7 +121,7 @@
     const res = await fetch(BIN_LATEST, { headers, cache: "no-store" });
     if (res.status === 401 || res.status === 403) {
       const err = new Error(
-        "JSONBin returned " + res.status + ". Check the Master Key in Settings (bin is private)."
+        "JSONBin returned " + res.status + ". If the bin is private, add a key in Settings."
       );
       err.code = res.status;
       throw err;
@@ -157,7 +155,7 @@
     });
     if (res.status === 401 || res.status === 403) {
       const err = new Error(
-        "Save failed (HTTP " + res.status + "). Check the Master Key in Settings."
+        "Save failed (HTTP " + res.status + "). If writes are blocked, add a key in Settings."
       );
       err.code = res.status;
       throw err;
@@ -241,14 +239,6 @@
   }
 
   async function loadCatalogAndRoute() {
-    if (!getStoredKey()) {
-      showSetupScreen(
-        "Paste the JSONBin Master Key (parent), then Save. Required because the quiz bin is private.",
-        ""
-      );
-      return;
-    }
-
     const status = $("#catalog-status");
     setStatus(status, "Loading catalog…", "");
     showScreen("catalog");
@@ -842,10 +832,6 @@
     setStatus($("#history-status"), "Loading…", "");
     showScreen("history");
     try {
-      if (!getStoredKey()) {
-        showSetupScreen("Master Key required to load history.", "err");
-        return;
-      }
       const data = await fetchCatalog();
       state.catalog = data;
       state.tests = publishedTests(data);
@@ -992,16 +978,16 @@
       setStatus(
         $("#settings-status"),
         key
-          ? "A Master Key is saved on this device (required for private bin)."
-          : "No key saved — paste the JSONBin Master Key to load and save.",
-        key ? "ok" : "err"
+          ? "A key is saved on this device (optional for AfsaQuizPublic)."
+          : "No key saved — public bin loads and saves without one.",
+        key ? "ok" : ""
       );
       showScreen("settings");
     });
 
     $("#btn-settings-back").addEventListener("click", () => {
       const ret = state.returnScreen || "catalog";
-      if (ret === "setup" || !getStoredKey()) {
+      if (ret === "setup") {
         loadCatalogAndRoute();
         return;
       }
@@ -1047,7 +1033,7 @@
     window.addEventListener("hashchange", () => {
       const id = parseRoute();
       if (!id) {
-        if (getStoredKey() && state.catalog) showScreen("catalog");
+        if (state.catalog) showScreen("catalog");
         return;
       }
       if (state.tests.length) openIntro(id);
