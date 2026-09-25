@@ -1,6 +1,6 @@
 # Afsa Helper · Algebra
 
-Adaptive algebra practice for a middle-schooler (built for **Afsa**). Starts with a short placement check, estimates a level (1–6), then runs adaptive practice with step-by-step help — especially on rational equations like `374/(x−10)=17`.
+Adaptive algebra practice for a middle-schooler (built for **Afsa**). Starts with a short placement check, estimates a level (1–7), then runs adaptive practice with step-by-step help — especially on rational equations like `374/(x−10)=17`. Includes a **Level-up Challenge Test** (scored L5–L7).
 
 ## How to open
 
@@ -23,16 +23,17 @@ No install, no build step, no npm. Works offline after the files are on disk (no
 |------|------|
 | `index.html` | App shell |
 | `styles.css` | Layout & theme |
-| `app.js` | Questions, adaptive logic, localStorage |
+| `app.js` | Questions, adaptive logic, localStorage, challenge |
 | `README.md` | This file |
 
 ## Features
 
-- **Placement** (~6 questions across difficulty bands) → starting level 1–6
+- **Placement** (~6 questions across difficulty bands) → starting level 1–7
 - **Adaptive practice** (10 questions per session)
-  - 2 correct in a row → level up (max 6)
+  - 2 correct in a row → level up (max 7)
   - 1 wrong → stay (with explanation)
   - 2 wrong in a row → drop a level + worked example
+- **Level-up Challenge Test** (~9 scored L5–L7 questions); syncs as Issues kind `challenge`
 - **Hints:** 2–4 step explanations on misses; “Try a similar one”
 - **Undefined values:** if she enters the excluded denominator value, the app explains why it’s undefined
 - **Progress saved** in `localStorage` (name, level, streaks, totals)
@@ -46,7 +47,8 @@ No install, no build step, no npm. Works offline after the files are on disk (no
 4. Fractions / clearing denominators  
 5. Rational equations with variable in denominator ★  
 6. Harder rationals, negatives, x in numerator, checking undefined  
+7. Multi-step rationals, proportions, x in num+den, undefined checks ★★  
 
 ## Privacy
 
-Everything stays on the device. No accounts, no network calls.
+Practice stays on the device. Parent Settings can sync session summaries to GitHub Issues on `sabirpatel/AfsasWorld` (label `afsa-progress`) for coaching.
