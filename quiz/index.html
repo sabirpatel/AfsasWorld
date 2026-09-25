@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c45c26" />
   <meta name="description" content="AfsasWorld Quizzes — JSONBin-driven tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.css?v=20260925quiz" />
+  <link rel="stylesheet" href="styles.css?v=20260925quiz2" />
 </head>
 <body>
   <div class="app">
@@ -24,17 +24,44 @@
       </div>
     </header>
 
+    <!-- SETUP (required Master Key) -->
+    <section id="screen-setup" class="screen" aria-label="JSONBin key setup">
+      <div class="card">
+        <div class="welcome-emoji" aria-hidden="true">🔑</div>
+        <h2>Parent setup required</h2>
+        <p class="lead">
+          The quiz catalog is a <strong>private</strong> JSONBin. Paste the JSONBin
+          <strong>Master Key</strong> once on this device — it is stored only in
+          <code>localStorage</code> (<code>afsa_jsonbin_key</code>) and never committed.
+        </p>
+        <div class="name-form" style="text-align:left">
+          <label for="setup-jsonbin-key">JSONBin Master Key</label>
+          <input id="setup-jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key" />
+          <p class="hint-text">
+            Bin ID is built into the app. Without this key the player cannot load tests or save attempts.
+            Afsa does not need to see this screen — a parent pastes the key once.
+          </p>
+        </div>
+        <div class="btn-row" style="margin-top:1rem">
+          <button type="button" class="btn-primary" id="btn-setup-save">Save &amp; load</button>
+          <button type="button" class="btn-ghost" id="btn-setup-settings">More settings</button>
+        </div>
+        <p id="setup-status" class="sync-status" role="status"></p>
+      </div>
+    </section>
+
     <!-- CATALOG -->
     <section id="screen-catalog" class="screen active" aria-label="Test catalog">
       <div class="card welcome-hero">
         <div class="welcome-emoji" aria-hidden="true">📝</div>
         <h2 id="site-title">Quizzes</h2>
-        <p class="lead" id="site-blurb">Pick a test. Results stay on this device unless you sync later.</p>
+        <p class="lead" id="site-blurb">Pick a test. Finished attempts are saved to JSONBin (parent key required).</p>
         <p id="catalog-status" class="status-line" role="status">Loading catalog…</p>
       </div>
       <div id="test-list" class="test-list" aria-live="polite"></div>
       <div class="footer-actions">
         <button type="button" class="btn-ghost" id="btn-reload-catalog">Reload catalog</button>
+        <button type="button" class="btn-secondary" id="btn-open-history">History</button>
       </div>
     </section>
 
@@ -84,7 +111,9 @@
         <h2 id="results-title">Nice work!</h2>
         <p class="score-big" id="results-score"></p>
         <p class="lead" id="results-summary"></p>
+        <p id="results-save-status" class="sync-status" role="status"></p>
         <div class="btn-row">
+          <button type="button" class="btn-teal hidden" id="btn-retry-save">Retry save</button>
           <button type="button" class="btn-primary hidden" id="btn-retry">Try again</button>
           <button type="button" class="btn-secondary" id="btn-review">Review answers</button>
           <button type="button" class="btn-ghost" id="btn-results-home">← All tests</button>
@@ -93,19 +122,58 @@
       <div id="review-list" class="review-list hidden" aria-label="Answer review"></div>
     </section>
 
+    <!-- HISTORY -->
+    <section id="screen-history" class="screen" aria-label="Attempt history">
+      <div class="card">
+        <h2>Attempt history</h2>
+        <p class="lead">Saved attempts from JSONBin (newest first).</p>
+        <div class="name-form" style="text-align:left;margin-bottom:0.75rem">
+          <label for="history-filter">Filter by test</label>
+          <select id="history-filter" class="answer-input" style="cursor:pointer">
+            <option value="">All tests</option>
+          </select>
+        </div>
+        <p id="history-status" class="status-line" role="status"></p>
+        <div class="btn-row">
+          <button type="button" class="btn-ghost" id="btn-history-back">← All tests</button>
+          <button type="button" class="btn-secondary" id="btn-history-reload">Reload</button>
+        </div>
+      </div>
+      <div id="history-list" class="test-list" aria-live="polite"></div>
+    </section>
+
+    <!-- HISTORY DETAIL -->
+    <section id="screen-history-detail" class="screen" aria-label="Attempt detail">
+      <div class="card results-card">
+        <h2 id="detail-title">Attempt</h2>
+        <p class="meta" id="detail-meta"></p>
+        <p class="score-big" id="detail-score" style="font-size:1.8rem"></p>
+        <p class="lead" id="detail-summary"></p>
+        <p id="detail-status" class="sync-status" role="status"></p>
+        <div class="btn-row">
+          <button type="button" class="btn-ghost" id="btn-detail-back">← History</button>
+          <button type="button" class="btn-secondary" id="btn-delete-attempt" style="color:var(--error)">Delete</button>
+        </div>
+      </div>
+      <div id="detail-answers" class="review-list" aria-label="Attempt answers"></div>
+    </section>
+
     <!-- PARENT SETTINGS -->
     <section id="screen-settings" class="screen" aria-label="Parent settings">
       <div class="card">
         <h2>Parent settings</h2>
         <p class="lead">
-          The quiz catalog loads from a public JSONBin. If the bin is private or returns 401,
-          paste a JSONBin Master Key or Access Key below. Stored only on this device — never committed.
+          Persistence is <strong>JSONBin only</strong> (no GitHub Issues / git sync for quiz results).
+          Paste the JSONBin <strong>Master Key</strong> below. Stored only on this device as
+          <code>afsa_jsonbin_key</code> — never commit keys.
         </p>
         <div class="name-form" style="text-align:left">
-          <label for="jsonbin-key">JSONBin key (optional)</label>
-          <input id="jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key or X-Access-Key" />
+          <label for="jsonbin-key">JSONBin Master Key (required)</label>
+          <input id="jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key" />
           <p class="hint-text">
-            Bin ID is built into the app. Leave blank when the bin is public for reads.
+            Required for load and save because the bin is private. Bin ID is built into the app.
+            To edit or add tests, update the bin JSON in the JSONBin dashboard (or API) —
+            only <code>status: "published"</code> tests appear in the catalog.
             Afsa does not need to see this screen.
           </p>
         </div>
@@ -119,6 +187,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=20260925quiz"></script>
+  <script src="app.js?v=20260925quiz2"></script>
 </body>
 </html>
