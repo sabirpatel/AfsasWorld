@@ -23,6 +23,7 @@
     pendingAttempt: null,
     historyFilterTestId: null,
     viewingAttempt: null,
+    catalogFilter: "todo",
   };
 
 
@@ -424,6 +425,34 @@
 
   
 
+  function completedTestIds() {
+    const ids = new Set();
+    const attempts = (state.catalog && Array.isArray(state.catalog.attempts)
+      ? state.catalog.attempts
+      : []);
+    attempts.forEach((a) => {
+      if (a && a.testId && a.finishedAt) ids.add(a.testId);
+    });
+    return ids;
+  }
+
+  function latestAttemptFor(testId) {
+    const attempts = (state.catalog && Array.isArray(state.catalog.attempts)
+      ? state.catalog.attempts
+      : []).filter((a) => a && a.testId === testId && a.finishedAt);
+    if (!attempts.length) return null;
+    attempts.sort((a, b) => String(b.finishedAt).localeCompare(String(a.finishedAt)));
+    return attempts[0];
+  }
+
+  function syncCatalogFilterUI() {
+    $$(".filter-chip").forEach((btn) => {
+      const on = btn.getAttribute("data-filter") === state.catalogFilter;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
   function renderCatalog() {
     const listEl = $("#test-list");
     const status = $("#catalog-status");
@@ -436,31 +465,66 @@
       if (blurb && state.catalog.site.homeBlurb) blurb.textContent = state.catalog.site.homeBlurb;
     }
 
+    syncCatalogFilterUI();
     listEl.innerHTML = "";
+
     if (!state.tests.length) {
       setStatus(status, "No published tests yet.", "");
       return;
     }
+
+    const doneIds = completedTestIds();
+    const filter = state.catalogFilter || "todo";
+    let visible = state.tests.slice();
+    if (filter === "todo") {
+      visible = visible.filter((t) => !doneIds.has(t.id));
+    } else if (filter === "done") {
+      visible = visible.filter((t) => doneIds.has(t.id));
+    }
+
+    const doneCount = state.tests.filter((t) => doneIds.has(t.id)).length;
+    const todoCount = state.tests.length - doneCount;
     setStatus(
       status,
-      state.tests.length + " published test" + (state.tests.length === 1 ? "" : "s"),
+      todoCount + " to do · " + doneCount + " finished",
       "ok"
     );
 
-    state.tests.forEach((t) => {
+    if (!visible.length) {
+      const empty = document.createElement("p");
+      empty.className = "test-list-empty";
+      if (filter === "todo") {
+        empty.textContent = "You're caught up — no new tests right now. Check Old tests for ones you've finished.";
+      } else if (filter === "done") {
+        empty.textContent = "No finished tests yet. Complete a quiz and it will show up here.";
+      } else {
+        empty.textContent = "No tests in this list.";
+      }
+      listEl.appendChild(empty);
+      return;
+    }
+
+    visible.forEach((t) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "test-card";
       btn.setAttribute("data-test-id", t.id);
       const qCount = Array.isArray(t.questions) ? t.questions.length : 0;
       const metaBits = [t.subject || "General", t.topic].filter(Boolean).map(escapeHtml);
+      const latest = latestAttemptFor(t.id);
+      const scoreChip = latest && latest.score
+        ? `<span class="chip score">${escapeHtml(String(latest.score.percent))}% last</span>`
+        : "";
       btn.innerHTML =
         `<div class="test-card-top">` +
         `<div class="test-card-main">` +
         `<div class="meta">${metaBits.join(" · ")}</div>` +
         `<h3>${escapeHtml(t.name || t.id)}</h3>` +
         `</div>` +
+        `<div class="chip-row-right">` +
+        scoreChip +
         `<span class="chip qcount">${qCount} question${qCount === 1 ? "" : "s"}</span>` +
+        `</div>` +
         `</div>` +
         (t.description
           ? `<p class="test-card-desc">${escapeHtml(t.description)}</p>`
@@ -1150,6 +1214,15 @@
   
 
   function wireEvents() {
+    $$(".filter-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-filter") || "todo";
+        if (state.catalogFilter === next) return;
+        state.catalogFilter = next;
+        renderCatalog();
+      });
+    });
+
     $("#btn-reload-catalog").addEventListener("click", () => {
       setRoute(null);
       loadCatalogAndRoute();
@@ -1161,6 +1234,7 @@
     $("#btn-intro-back").addEventListener("click", () => {
       setRoute(null);
       showScreen("catalog");
+      renderCatalog();
     });
 
     $("#btn-check").addEventListener("click", checkAnswer);
@@ -1172,12 +1246,16 @@
     $("#btn-review").addEventListener("click", renderReview);
     $("#btn-results-home").addEventListener("click", () => {
       setRoute(null);
+      // After finishing, default back to To do so completed tests leave the main list
+      state.catalogFilter = "todo";
       showScreen("catalog");
+      renderCatalog();
     });
     $("#btn-retry-save").addEventListener("click", () => retrySave());
 
     $("#btn-history-back").addEventListener("click", () => {
       showScreen("catalog");
+      renderCatalog();
     });
     $("#btn-history-reload").addEventListener("click", () => openHistory());
     $("#history-filter").addEventListener("change", () => {
