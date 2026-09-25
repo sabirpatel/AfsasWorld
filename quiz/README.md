@@ -8,7 +8,7 @@ https://sabirpatel.github.io/AfsasWorld/quiz/
 
 ## Bin
 
-- ID: `6ab6df70ac6210605af59ddd` (AfsaQuiz)
+- ID: `6ab6e407ffd5d160532f453f` (AfsaQuiz)
 - Private; `schemaVersion: 2` with `attempts: []`
 - Read: `GET …/v3/b/<id>/latest?meta=false` with `X-Master-Key`
 - Update: `PUT …/v3/b/<id>` with `Content-Type: application/json`, `X-Master-Key`
