@@ -1,4 +1,4 @@
-/* AfsasWorld Quizzes — playful kid-friendly theme + scratch pad */
+/* AfsasWorld Quizzes — simple kid-friendly theme + fixed-height scratch pad */
 :root {
   --bg: #f4f0ff;
   --bg-card: #ffffff;
@@ -17,7 +17,7 @@
   --error-bg: #fef2f2;
   --warn: #b45309;
   --warn-bg: #fffbeb;
-  --shadow: 0 12px 32px rgba(124, 92, 255, 0.12);
+  --shadow: 0 8px 24px rgba(124, 92, 255, 0.08);
   --radius: 22px;
   --pad-x: clamp(1.1rem, 4.5vw, 1.75rem);
   --font: "Segoe UI", system-ui, -apple-system, "Nunito", sans-serif;
@@ -30,11 +30,7 @@ html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
 body {
   font-family: var(--font);
-  background:
-    radial-gradient(ellipse at 12% 0%, #ffe8f3 0%, transparent 40%),
-    radial-gradient(ellipse at 95% 8%, #d9fff6 0%, transparent 36%),
-    radial-gradient(ellipse at 50% 100%, #e8e0ff 0%, transparent 42%),
-    linear-gradient(165deg, #faf7ff 0%, #f0f9ff 55%, #fff5f8 100%);
+  background: linear-gradient(180deg, #faf8ff 0%, #f3efff 100%);
   color: var(--ink);
   min-height: 100dvh;
   line-height: 1.45;
@@ -43,37 +39,9 @@ body {
     max(var(--pad-x), env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom))
     max(var(--pad-x), env(safe-area-inset-left));
-  position: relative;
-  overflow-x: hidden;
-}
-
-.blobs {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-}
-.blob {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.45;
-  filter: blur(1px);
-}
-.b1 {
-  width: 160px; height: 160px;
-  background: #ffd6e8;
-  top: -36px; right: -28px;
-}
-.b2 {
-  width: 120px; height: 120px;
-  background: #c8fff0;
-  bottom: 10%; left: -36px;
 }
 
 .app {
-  position: relative;
-  z-index: 1;
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
@@ -105,15 +73,14 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 13px;
-  background: linear-gradient(135deg, #7c5cff, #5b8cff 55%, #22c7a9);
+  background: var(--accent);
   color: white;
   display: grid;
   place-items: center;
   font-weight: 800;
   font-size: 1.15rem;
-  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(124, 92, 255, 0.28);
   text-decoration: none;
-  transform: rotate(-3deg);
 }
 
 .brand h1 {
@@ -145,9 +112,9 @@ body {
 
 .card {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.35rem 1.25rem;
+  padding: 1.25rem 1.15rem;
   box-shadow: var(--shadow);
 }
 
@@ -165,7 +132,7 @@ body {
 }
 
 .welcome-hero { text-align: center; padding: 1.35rem 1.25rem 1.15rem; }
-.welcome-emoji { font-size: 2.6rem; margin-bottom: 0.5rem; }
+.welcome-emoji { font-size: 2rem; margin-bottom: 0.4rem; }
 
 .status-line {
   font-size: 0.85rem;
@@ -682,13 +649,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .scratch-pad {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 0.85rem 0.9rem 0.75rem;
+  padding: 0.75rem 0.85rem 0.65rem;
   display: flex;
   flex-direction: column;
-  min-height: 280px;
 }
 
 .scratch-pad-header {
@@ -751,13 +717,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 }
 
 .scratch-canvas-wrap {
-  flex: 1;
-  min-height: 220px;
+  flex: none;
+  height: 220px;
   border-radius: 14px;
-  border: 2px dashed #c4b5fd;
+  border: 1.5px dashed #c4b5fd;
   background:
-    linear-gradient(90deg, rgba(124, 92, 255, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(rgba(124, 92, 255, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(124, 92, 255, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(rgba(124, 92, 255, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
     #faf8ff;
   overflow: hidden;
   position: relative;
@@ -767,17 +733,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 220px;
   touch-action: none;
   cursor: crosshair;
   border-radius: 12px;
 }
 
 .scratch-hint {
-  margin-top: 0.45rem;
-  font-size: 0.72rem;
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
   color: var(--muted);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .app-foot {
@@ -801,7 +766,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .powered-mark {
   display: block;
-  border-radius: 50%;
+  border-radius: 7px;
 }
 
 .hidden { display: none !important; }
@@ -811,16 +776,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
     gap: 1rem;
-    align-items: stretch;
-  }
-  .scratch-pad {
-    min-height: 100%;
+    align-items: start;
   }
   .scratch-canvas-wrap {
-    min-height: 280px;
-  }
-  #scratch-canvas {
-    min-height: 280px;
+    height: 260px;
   }
 }
 
