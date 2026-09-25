@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c45c26" />
   <meta name="description" content="Afsa Helper · Algebra — adaptive practice for middle-school algebra, including rational equations." />
   <title>Afsa Helper · Algebra</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260925l7" />
 </head>
 <body>
   <div class="app">
@@ -23,7 +23,7 @@
       </div>
       <div class="stats-bar hidden" id="stats-bar">
         <div class="stat-chip streak" id="stat-streak">🔥 <strong>0</strong></div>
-        <div class="stat-chip level" id="stat-level">Level <strong>3</strong>/6</div>
+        <div class="stat-chip level" id="stat-level">Level <strong>6</strong>/7</div>
         <div class="stat-chip" id="stat-acc">Accuracy <strong>—</strong></div>
       </div>
     </header>
@@ -34,9 +34,9 @@
         <div class="welcome-emoji" aria-hidden="true">📐</div>
         <h2>Ready to level up your algebra?</h2>
         <p class="lead">
-          Short placement, then adaptive practice that gets harder when you're crushing it —
-          and gentler (with clear steps) when something's tricky. Built especially for equations
-          like <strong>374/(x−10)=17</strong>.
+          Short placement, then adaptive practice through <strong>Level 7</strong> —
+          multi-step rationals, x in numerator and denominator, and undefined checks.
+          Built especially for equations like <strong>374/(x−10)=17</strong>.
         </p>
 
         <div class="name-form" style="text-align:left">
@@ -53,14 +53,18 @@
           <li><span class="topic-num">4</span> Fractions / clear denominators</li>
           <li><span class="topic-num">5</span> Rational: variable in the denominator ★</li>
           <li><span class="topic-num">6</span> Harder rationals &amp; undefined checks</li>
+          <li><span class="topic-num">7</span> Multi-step rationals &amp; undefined ★★</li>
         </ul>
 
         <div class="btn-row">
           <button type="button" class="btn-primary" id="btn-start-placement">Start placement check</button>
           <button type="button" class="btn-secondary" id="btn-skip-practice">Skip to practice</button>
         </div>
+        <div class="btn-row" style="margin-top:0.65rem">
+          <button type="button" class="btn-teal" id="btn-start-challenge">Level-up Challenge Test</button>
+        </div>
         <p style="margin-top:0.85rem;font-size:0.8rem;color:var(--muted)">
-          Placement is about 6 quick questions. Progress saves on this device.
+          Placement is about 6 quick questions (can place up to Level 7). The Level-up Challenge is a scored L5–L7 test (~9 questions). Progress saves on this device.
         </p>
       </div>
       <div class="footer-actions">
@@ -236,6 +240,6 @@
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260925l7"></script>
 </body>
 </html>
