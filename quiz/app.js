@@ -81,39 +81,62 @@
       return Math.max(1, window.devicePixelRatio || 1);
     }
 
+    let lastCssW = 0;
+    let lastCssH = 0;
+    let ro = null;
+    let resizing = false;
+
     function resize() {
+      if (resizing) return;
       const wrap = canvas.parentElement || canvas;
-      const rect = wrap.getBoundingClientRect();
-      const cssW = Math.max(1, Math.floor(rect.width));
-      const cssH = Math.max(220, Math.floor(rect.height || 220));
-      const ratio = dpr();
-      const w = Math.max(1, Math.floor(cssW * ratio));
-      const h = Math.max(1, Math.floor(cssH * ratio));
+      // Width from layout; height from fixed CSS on .scratch-canvas-wrap
+      const cssW = Math.max(1, Math.floor(wrap.clientWidth));
+      const cssH = Math.max(1, Math.floor(wrap.clientHeight));
+      if (cssW === lastCssW && cssH === lastCssH) return;
 
-      const prevW = backing.width;
-      const prevH = backing.height;
-      let snapshot = null;
-      if (prevW > 0 && prevH > 0) {
-        snapshot = document.createElement("canvas");
-        snapshot.width = prevW;
-        snapshot.height = prevH;
-        snapshot.getContext("2d").drawImage(backing, 0, 0);
+      resizing = true;
+      if (ro) {
+        try { ro.disconnect(); } catch (_) {}
       }
 
-      canvas.width = w;
-      canvas.height = h;
-      canvas.style.width = cssW + "px";
-      canvas.style.height = cssH + "px";
-      backing.width = w;
-      backing.height = h;
+      try {
+        lastCssW = cssW;
+        lastCssH = cssH;
+        const ratio = dpr();
+        const w = Math.max(1, Math.floor(cssW * ratio));
+        const h = Math.max(1, Math.floor(cssH * ratio));
 
-      bctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      if (snapshot) {
-        bctx.drawImage(snapshot, 0, 0, w, h);
+        const prevW = backing.width;
+        const prevH = backing.height;
+        let snapshot = null;
+        if (prevW > 0 && prevH > 0) {
+          snapshot = document.createElement("canvas");
+          snapshot.width = prevW;
+          snapshot.height = prevH;
+          snapshot.getContext("2d").drawImage(backing, 0, 0);
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        // Do not set inline height — CSS height:100% fills the fixed wrap
+        canvas.style.width = "";
+        canvas.style.height = "";
+        backing.width = w;
+        backing.height = h;
+
+        bctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (snapshot) {
+          bctx.drawImage(snapshot, 0, 0, w, h);
+        }
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(backing, 0, 0);
+      } finally {
+        resizing = false;
+        if (ro) {
+          try { ro.observe(wrap); } catch (_) {}
+        }
       }
-      ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(backing, 0, 0);
     }
 
     function pos(e) {
@@ -223,9 +246,12 @@
     toolButtons.forEach((btn) => btn.addEventListener("click", onToolClick));
     syncToolUI();
 
-    let ro = null;
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => resize());
+      let debounceTimer = null;
+      ro = new ResizeObserver(() => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => resize(), 50);
+      });
       ro.observe(canvas.parentElement || canvas);
     } else {
       window.addEventListener("resize", resize);
