@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c45c26" />
   <meta name="description" content="AfsasWorld Quizzes — JSONBin-driven tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.20260925c.css" />
+  <link rel="stylesheet" href="styles.20260925d.css" />
 </head>
 <body>
   <div class="app">
@@ -20,7 +20,6 @@
       </div>
       <div class="header-actions">
         <a class="btn-ghost home-link" href="../">← Home</a>
-        <button type="button" class="btn-ghost settings-btn" id="btn-settings" title="Parent settings">Settings</button>
       </div>
     </header>
 
@@ -134,34 +133,9 @@
     </section>
 
     <!-- PARENT SETTINGS -->
-    <section id="screen-settings" class="screen" aria-label="Parent settings">
-      <div class="card">
-        <h2>Parent settings</h2>
-        <p class="lead">
-          Persistence is <strong>JSONBin only</strong> (no GitHub Issues / git sync for quiz results).
-          Paste the JSONBin <strong>Master Key</strong> below. Stored only on this device as
-          <code>afsa_jsonbin_key</code> — never commit keys.
-        </p>
-        <div class="name-form" style="text-align:left">
-          <label for="jsonbin-key">JSONBin Master Key (required)</label>
-          <input id="jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key" />
-          <p class="hint-text">
-            Required for load and save because the bin is private. Bin ID is built into the app.
-            To edit or add tests, update the bin JSON in the JSONBin dashboard (or API) —
-            only <code>status: "published"</code> tests appear in the catalog.
-            Afsa does not need to see this screen.
-          </p>
-        </div>
-        <div class="btn-row" style="margin-top:1rem">
-          <button type="button" class="btn-primary" id="btn-save-settings">Save settings</button>
-          <button type="button" class="btn-secondary" id="btn-clear-key">Clear key</button>
-          <button type="button" class="btn-ghost" id="btn-settings-back">← Back</button>
-        </div>
-        <p id="settings-status" class="sync-status" role="status"></p>
-      </div>
-    </section>
+    
   </div>
 
-  <script src="app.20260925c.js"></script>
+  <script src="app.20260925d.js"></script>
 </body>
 </html>
