@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#7C5CFF" />
   <meta name="description" content="AfsasWorld Quizzes — tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.20260925g.css" />
+  <link rel="stylesheet" href="styles.20260925h.css" />
 </head>
 <body>
   <div class="app">
@@ -30,6 +30,11 @@
         <h2 id="site-title">Quizzes</h2>
         <p class="lead" id="site-blurb">Pick a test. Scores save automatically — no key needed.</p>
         <p id="catalog-status" class="status-line" role="status">Loading catalog…</p>
+      </div>
+      <div class="catalog-filter" role="tablist" aria-label="Filter tests">
+        <button type="button" class="filter-chip active" role="tab" aria-selected="true" data-filter="todo" id="filter-todo">To do</button>
+        <button type="button" class="filter-chip" role="tab" aria-selected="false" data-filter="done" id="filter-done">Old tests</button>
+        <button type="button" class="filter-chip" role="tab" aria-selected="false" data-filter="all" id="filter-all">All</button>
       </div>
       <div id="test-list" class="test-list" aria-live="polite"></div>
       <div class="footer-actions">
@@ -160,6 +165,6 @@
     </footer>
   </div>
 
-  <script src="app.20260925g.js"></script>
+  <script src="app.20260925h.js"></script>
 </body>
 </html>
