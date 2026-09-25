@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c45c26" />
   <meta name="description" content="AfsasWorld Quizzes — JSONBin-driven tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.css?v=20260925quiz3" />
+  <link rel="stylesheet" href="styles.20260925c.css" />
 </head>
 <body>
   <div class="app">
@@ -24,36 +24,13 @@
       </div>
     </header>
 
-    <!-- SETUP (only if public read fails / bin private) -->
-    <section id="screen-setup" class="screen" aria-label="JSONBin key setup">
-      <div class="card">
-        <div class="welcome-emoji" aria-hidden="true">🔑</div>
-        <h2>Key needed</h2>
-        <p class="lead">
-          The public quiz bin should load without a key. If you see this screen, paste a JSONBin
-          <strong>Master Key</strong> or Access Key (stored only in <code>localStorage</code>).
-        </p>
-        <div class="name-form" style="text-align:left">
-          <label for="setup-jsonbin-key">JSONBin key (optional for AfsaQuizPublic)</label>
-          <input id="setup-jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key" />
-          <p class="hint-text">
-            Normal use: open Quizzes and take tests with no key. Settings still accepts a key for private bins.
-          </p>
-        </div>
-        <div class="btn-row" style="margin-top:1rem">
-          <button type="button" class="btn-primary" id="btn-setup-save">Save &amp; load</button>
-          <button type="button" class="btn-ghost" id="btn-setup-settings">More settings</button>
-        </div>
-        <p id="setup-status" class="sync-status" role="status"></p>
-      </div>
-    </section>
 
     <!-- CATALOG -->
     <section id="screen-catalog" class="screen active" aria-label="Test catalog">
       <div class="card welcome-hero">
         <div class="welcome-emoji" aria-hidden="true">📝</div>
         <h2 id="site-title">Quizzes</h2>
-        <p class="lead" id="site-blurb">Pick a test. Finished attempts save to AfsaQuizPublic on JSONBin — no key needed.</p>
+        <p class="lead" id="site-blurb">Pick a test. Scores save to JSONBin automatically — no key needed.</p>
         <p id="catalog-status" class="status-line" role="status">Loading catalog…</p>
       </div>
       <div id="test-list" class="test-list" aria-live="polite"></div>
@@ -185,6 +162,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=20260925quiz3"></script>
+  <script src="app.20260925c.js"></script>
 </body>
 </html>
