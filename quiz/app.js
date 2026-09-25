@@ -56,14 +56,8 @@
   }
 
   function requireKeyHeaders() {
-    const headers = {};
-    const key = getStoredKey();
-    if (key) {
-      // Optional: parent may still paste a key for private bins / extra auth
-      headers["X-Master-Key"] = key;
-      headers["X-Access-Key"] = key;
-    }
-    return headers;
+    // AfsaQuizPublic is public — never send keys; no parent setup screen.
+    return {};
   }
 
   function shuffle(arr) {
@@ -189,9 +183,14 @@
   }
 
   function showSetupScreen(message, kind) {
-    setStatus($("#setup-status"), message || "", kind || "");
-    $("#setup-jsonbin-key").value = "";
-    showScreen("setup");
+    // Setup UI removed. Show errors on the catalog instead.
+    showScreen("catalog");
+    const el = document.querySelector("#catalog-status");
+    if (el) {
+      el.textContent = message || "";
+      el.classList.remove("ok", "err");
+      if (kind) el.classList.add(kind);
+    }
   }
 
   function renderCatalog() {
@@ -924,7 +923,6 @@
     if ($("#screen-question").classList.contains("active")) return "question";
     if ($("#screen-history").classList.contains("active")) return "history";
     if ($("#screen-history-detail").classList.contains("active")) return "history-detail";
-    if ($("#screen-setup").classList.contains("active")) return "setup";
     return "catalog";
   }
 
@@ -977,20 +975,14 @@
       $("#jsonbin-key").value = "";
       setStatus(
         $("#settings-status"),
-        key
-          ? "A key is saved on this device (optional for AfsaQuizPublic)."
-          : "No key saved — public bin loads and saves without one.",
-        key ? "ok" : ""
+        "Public quiz bin — no Master Key needed. Settings key is unused.",
+        "ok"
       );
       showScreen("settings");
     });
 
     $("#btn-settings-back").addEventListener("click", () => {
       const ret = state.returnScreen || "catalog";
-      if (ret === "setup") {
-        loadCatalogAndRoute();
-        return;
-      }
       showScreen(ret);
     });
 
@@ -1015,20 +1007,12 @@
       setStoredKey("");
       $("#jsonbin-key").value = "";
       setStatus($("#settings-status"), "Key cleared from this device.", "");
-      showSetupScreen("Key cleared. Paste the Master Key to continue.", "");
-    });
-
-    $("#btn-setup-save").addEventListener("click", () => {
-      if (!saveKeyFromInput("#setup-jsonbin-key", "#setup-status")) return;
+      setStatus($("#settings-status"), "Key cleared. Not needed for the public quiz bin.", "");
       loadCatalogAndRoute();
+      return;
     });
 
-    $("#btn-setup-settings").addEventListener("click", () => {
-      state.returnScreen = "setup";
-      $("#jsonbin-key").value = "";
-      setStatus($("#settings-status"), "Paste Master Key below.", "");
-      showScreen("settings");
-    });
+
 
     window.addEventListener("hashchange", () => {
       const id = parseRoute();
