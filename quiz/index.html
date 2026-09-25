@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c45c26" />
   <meta name="description" content="AfsasWorld Quizzes — JSONBin-driven tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.css?v=20260925quiz2" />
+  <link rel="stylesheet" href="styles.css?v=20260925quiz3" />
 </head>
 <body>
   <div class="app">
@@ -24,22 +24,20 @@
       </div>
     </header>
 
-    <!-- SETUP (required Master Key) -->
+    <!-- SETUP (only if public read fails / bin private) -->
     <section id="screen-setup" class="screen" aria-label="JSONBin key setup">
       <div class="card">
         <div class="welcome-emoji" aria-hidden="true">🔑</div>
-        <h2>Parent setup required</h2>
+        <h2>Key needed</h2>
         <p class="lead">
-          The quiz catalog is a <strong>private</strong> JSONBin. Paste the JSONBin
-          <strong>Master Key</strong> once on this device — it is stored only in
-          <code>localStorage</code> (<code>afsa_jsonbin_key</code>) and never committed.
+          The public quiz bin should load without a key. If you see this screen, paste a JSONBin
+          <strong>Master Key</strong> or Access Key (stored only in <code>localStorage</code>).
         </p>
         <div class="name-form" style="text-align:left">
-          <label for="setup-jsonbin-key">JSONBin Master Key</label>
+          <label for="setup-jsonbin-key">JSONBin key (optional for AfsaQuizPublic)</label>
           <input id="setup-jsonbin-key" type="password" autocomplete="off" placeholder="X-Master-Key" />
           <p class="hint-text">
-            Bin ID is built into the app. Without this key the player cannot load tests or save attempts.
-            Afsa does not need to see this screen — a parent pastes the key once.
+            Normal use: open Quizzes and take tests with no key. Settings still accepts a key for private bins.
           </p>
         </div>
         <div class="btn-row" style="margin-top:1rem">
@@ -55,7 +53,7 @@
       <div class="card welcome-hero">
         <div class="welcome-emoji" aria-hidden="true">📝</div>
         <h2 id="site-title">Quizzes</h2>
-        <p class="lead" id="site-blurb">Pick a test. Finished attempts are saved to JSONBin (parent key required).</p>
+        <p class="lead" id="site-blurb">Pick a test. Finished attempts save to AfsaQuizPublic on JSONBin — no key needed.</p>
         <p id="catalog-status" class="status-line" role="status">Loading catalog…</p>
       </div>
       <div id="test-list" class="test-list" aria-live="polite"></div>
@@ -187,6 +185,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=20260925quiz2"></script>
+  <script src="app.js?v=20260925quiz3"></script>
 </body>
 </html>
