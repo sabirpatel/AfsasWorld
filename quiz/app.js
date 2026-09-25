@@ -5,7 +5,6 @@
   const BIN_ID = "6ab6e407ffd5d160532f453f";
   const BIN_LATEST = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?meta=false`;
   const BIN_PUT = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-  const KEY_STORAGE = "afsa_jsonbin_key";
   const ATTEMPTS_CAP = 200;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -20,7 +19,6 @@
     answers: [],
     selectedChoiceId: null,
     checked: false,
-    returnScreen: "catalog",
     startedAt: null,
     pendingAttempt: null,
     historyFilterTestId: null,
@@ -40,25 +38,11 @@
     if (kind) el.classList.add(kind);
   }
 
-  function getStoredKey() {
-    try {
-      return localStorage.getItem(KEY_STORAGE) || "";
-    } catch (_) {
-      return "";
-    }
-  }
+  
 
-  function setStoredKey(key) {
-    try {
-      if (key) localStorage.setItem(KEY_STORAGE, key);
-      else localStorage.removeItem(KEY_STORAGE);
-    } catch (_) { /* ignore */ }
-  }
+  
 
-  function requireKeyHeaders() {
-    // AfsaQuizPublic is public — never send keys; no parent setup screen.
-    return {};
-  }
+  
 
   function shuffle(arr) {
     const a = arr.slice();
@@ -111,11 +95,10 @@
 
   async function fetchCatalog() {
     const headers = { Accept: "application/json" };
-    Object.assign(headers, requireKeyHeaders());
     const res = await fetch(BIN_LATEST, { headers, cache: "no-store" });
     if (res.status === 401 || res.status === 403) {
       const err = new Error(
-        "JSONBin returned " + res.status + ". If the bin is private, add a key in Settings."
+        "JSONBin returned " + res.status + "."
       );
       err.code = res.status;
       throw err;
@@ -130,13 +113,10 @@
   }
 
   async function saveCatalog(record) {
-    const headers = Object.assign(
-      {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      requireKeyHeaders()
-    );
+    const headers = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
     const body = Object.assign({}, record, {
       updatedAt: new Date().toISOString(),
     });
@@ -149,7 +129,7 @@
     });
     if (res.status === 401 || res.status === 403) {
       const err = new Error(
-        "Save failed (HTTP " + res.status + "). If writes are blocked, add a key in Settings."
+        "Save failed (HTTP " + res.status + ")."
       );
       err.code = res.status;
       throw err;
@@ -182,16 +162,7 @@
     return list;
   }
 
-  function showSetupScreen(message, kind) {
-    // Setup UI removed. Show errors on the catalog instead.
-    showScreen("catalog");
-    const el = document.querySelector("#catalog-status");
-    if (el) {
-      el.textContent = message || "";
-      el.classList.remove("ok", "err");
-      if (kind) el.classList.add(kind);
-    }
-  }
+  
 
   function renderCatalog() {
     const listEl = $("#test-list");
@@ -257,10 +228,7 @@
     } catch (err) {
       state.catalog = null;
       state.tests = [];
-      if (err.code === "NO_KEY" || err.code === 401 || err.code === 403) {
-        showSetupScreen(err.message || "Key required or invalid.", "err");
-        return;
-      }
+      // public bin — show error on catalog
       renderCatalog();
       setStatus(status, err.message || "Failed to load catalog.", "err");
       showScreen("catalog");
@@ -836,10 +804,7 @@
       state.tests = publishedTests(data);
       renderHistory();
     } catch (err) {
-      if (err.code === "NO_KEY" || err.code === 401 || err.code === 403) {
-        showSetupScreen(err.message || "Key required.", "err");
-        return;
-      }
+      // public bin — show error on history
       setStatus($("#history-status"), err.message || "Failed to load history.", "err");
       renderHistory();
     }
@@ -916,15 +881,7 @@
     }
   }
 
-  function captureReturnScreen() {
-    if ($("#screen-catalog").classList.contains("active")) return "catalog";
-    if ($("#screen-intro").classList.contains("active")) return "intro";
-    if ($("#screen-results").classList.contains("active")) return "results";
-    if ($("#screen-question").classList.contains("active")) return "question";
-    if ($("#screen-history").classList.contains("active")) return "history";
-    if ($("#screen-history-detail").classList.contains("active")) return "history-detail";
-    return "catalog";
-  }
+  
 
   function wireEvents() {
     $("#btn-reload-catalog").addEventListener("click", () => {
@@ -969,48 +926,11 @@
     });
     $("#btn-delete-attempt").addEventListener("click", () => deleteViewingAttempt());
 
-    $("#btn-settings").addEventListener("click", () => {
-      state.returnScreen = captureReturnScreen();
-      const key = getStoredKey();
-      $("#jsonbin-key").value = "";
-      setStatus(
-        $("#settings-status"),
-        "Public quiz bin — no Master Key needed. Settings key is unused.",
-        "ok"
-      );
-      showScreen("settings");
-    });
 
-    $("#btn-settings-back").addEventListener("click", () => {
-      const ret = state.returnScreen || "catalog";
-      showScreen(ret);
-    });
 
-    function saveKeyFromInput(inputSel, statusSel) {
-      const val = ($(inputSel).value || "").trim();
-      if (!val) {
-        setStatus($(statusSel), "Paste the JSONBin Master Key to save.", "err");
-        return false;
-      }
-      setStoredKey(val);
-      $(inputSel).value = "";
-      setStatus($(statusSel), "Saved on this device. Loading catalog…", "ok");
-      return true;
-    }
+    
 
-    $("#btn-save-settings").addEventListener("click", () => {
-      if (!saveKeyFromInput("#jsonbin-key", "#settings-status")) return;
-      loadCatalogAndRoute();
-    });
 
-    $("#btn-clear-key").addEventListener("click", () => {
-      setStoredKey("");
-      $("#jsonbin-key").value = "";
-      setStatus($("#settings-status"), "Key cleared from this device.", "");
-      setStatus($("#settings-status"), "Key cleared. Not needed for the public quiz bin.", "");
-      loadCatalogAndRoute();
-      return;
-    });
 
 
 
