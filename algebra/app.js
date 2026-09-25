@@ -1,6 +1,6 @@
 /**
  * Afsa Helper · Algebra
- * Adaptive algebra practice for middle school (levels 1–6)
+ * Adaptive algebra practice for middle school (levels 1–7)
  */
 (function () {
   "use strict";
@@ -14,6 +14,8 @@
   const STORAGE_KEY = "afsa-algebra-v1";
   const PLACEMENT_LEN = 6;
   const PRACTICE_LEN = 10;
+  const CHALLENGE_LEN = 9;
+  const MAX_LEVEL = 7;
 
   const LEVEL_NAMES = [
     "",
@@ -23,6 +25,7 @@
     "Fractions / clear denominators",
     "Rational: variable in denominator",
     "Harder rationals & checks",
+    "Multi-step rationals & undefined",
   ];
 
   const ENCOURAGE_RIGHT = [
@@ -46,11 +49,13 @@
   let state = {
     name: "Afsa",
     level: 3,
-    mode: "welcome", // welcome | placement | practice | summary | example
+    mode: "welcome", // welcome | placement | practice | challenge | summary | example
     placementIndex: 0,
     practiceIndex: 0,
     placementResults: [],
     practiceResults: [],
+    challengeResults: [],
+    challengeIndex: 0,
     streak: 0,
     bestStreak: 0,
     correctInRow: 0,
@@ -403,10 +408,170 @@
     };
   }
 
-  const GENERATORS = [null, genLevel1, genLevel2, genLevel3, genLevel4, genLevel5, genLevel6];
+
+  function genLevel7(attempt) {
+    // Multi-step rationals, x in num+den, undefined checks — integer answers only
+    attempt = (attempt | 0) + 1;
+    if (attempt > 40) {
+      // Safe fallback: classic rational with integer answer
+      const c = pick([3, 4, 5, 6]);
+      const b = randInt(2, 10);
+      const mult = randInt(2, 12);
+      const a = c * mult;
+      const x = mult + b;
+      return {
+        level: 7,
+        topic: "Multi-step rationals & undefined",
+        display: `${a}/(x − ${b}) + 2 = ${c + 2}`,
+        answer: x,
+        excluded: b,
+        steps: [
+          `Excluded: x ≠ ${b}. Isolate: ${a}/(x − ${b}) = ${c}.`,
+          `x − ${b} = ${mult} → x = ${x}. Check defined.`,
+        ],
+      };
+    }
+    const type = pick(["twostep", "proportion", "numx_neg", "nested", "check"]);
+    if (type === "twostep") {
+      // a/(x - b) + c = d  →  a/(x-b) = d-c  → x = a/(d-c) + b
+      const c = pick([-4, -3, -2, 2, 3, 4, 5]);
+      const diff = pick([-5, -4, -3, -2, 2, 3, 4, 5, 6]); // d - c
+      const d = c + diff;
+      const mult = randInt(2, 12) * (Math.random() < 0.35 ? -1 : 1);
+      const a = diff * mult;
+      const b = randInt(-6, 10);
+      const x = mult + b;
+      if (x === b || a === 0 || diff === 0) return genLevel7(attempt);
+      const bDisp = b < 0 ? `x + ${-b}` : `x − ${b}`;
+      const cDisp = c >= 0 ? `+ ${c}` : `− ${-c}`;
+      return {
+        level: 7,
+        topic: "Multi-step rational (isolate, then clear)",
+        display: `${a}/(${bDisp}) ${cDisp} = ${d}`,
+        answer: x,
+        excluded: b,
+        steps: [
+          `Excluded: x ≠ ${b}. First isolate the fraction: ${a}/(${bDisp}) = ${d} − (${c}) = ${diff}.`,
+          `Multiply both sides by (${bDisp}): ${a} = ${diff}(${bDisp}).`,
+          `${a}/${diff} = ${bDisp} → ${mult} = ${bDisp}.`,
+          `Solve: x = ${x}. Check x ≠ ${b} and plug back.`,
+        ],
+      };
+    }
+    if (type === "proportion") {
+      // a/(x - b) = c/(x - d) — pick integers so x is integer and x ≠ b, x ≠ d
+      const a = pick([2, 3, 4, 5, 6, 8]);
+      let c = pick([2, 3, 4, 5, 6, 8].filter((n) => n !== a));
+      const b = randInt(-5, 8);
+      let x = randInt(-8, 14);
+      if (x === b) x = b + pick([-4, -3, -2, 2, 3, 4]);
+      // a/(x-b) = c/(x-d) → a(x-d) = c(x-b) → a x - a d = c x - c b
+      // a d = a x - c x + c b → d = x - (c*(x-b))/a  need a | c(x-b)
+      const gap = x - b;
+      if (gap === 0 || (c * gap) % a !== 0) return genLevel7(attempt);
+      const d = x - (c * gap) / a;
+      if (!Number.isInteger(d) || d === b || x === d) return genLevel7(attempt);
+      const denomCoeff = a - c;
+      const num = a * d - c * b;
+      const bDisp = b < 0 ? `x + ${-b}` : `x − ${b}`;
+      const dDisp = d < 0 ? `x + ${-d}` : `x − ${d}`;
+      return {
+        level: 7,
+        topic: "Rational proportion (two excluded values)",
+        display: `${a}/(${bDisp}) = ${c}/(${dDisp})`,
+        answer: x,
+        excluded: b,
+        excludedExtra: d,
+        steps: [
+          `Excluded values: x ≠ ${b} and x ≠ ${d}.`,
+          `Cross-multiply: ${a}(${dDisp}) = ${c}(${bDisp}).`,
+          `${a}x − ${a * d} = ${c}x − ${c * b}.`,
+          `Collect x: ${a}x − ${c}x = ${a * d} − ${c * b} → ${denomCoeff}x = ${num} → x = ${x}.`,
+          `Check: x ≠ ${b}, x ≠ ${d}.`,
+        ],
+      };
+    }
+    if (type === "numx_neg") {
+      // (x + a)/(x - b) = c  with negatives / harder coeffs
+      const c = pick([-4, -3, -2, 2, 3, 4, 5, -5]);
+      const b = randInt(-8, 9);
+      let x = randInt(b + 2, b + 15);
+      if (Math.random() < 0.4) x = randInt(b - 15, b - 2);
+      if (x === b) return genLevel7(attempt);
+      const a = c * (x - b) - x;
+      const aDisp = a >= 0 ? `x + ${a}` : `x − ${-a}`;
+      const bDisp = b < 0 ? `x + ${-b}` : `x − ${b}`;
+      return {
+        level: 7,
+        topic: "x in num & den (harder signs)",
+        display: `(${aDisp})/(${bDisp}) = ${c}`,
+        answer: x,
+        excluded: b,
+        steps: [
+          `x ≠ ${b}. Multiply: ${aDisp} = ${c}(${bDisp}).`,
+          `${aDisp} = ${c}x − ${c * b}.`,
+          `x − ${c}x = ${-c * b} − (${a}) → ${1 - c}x = ${-c * b - a}.`,
+          `x = ${x}. Verify denominator ≠ 0.`,
+        ],
+      };
+    }
+    if (type === "nested") {
+      // (ax + b)/(x - c) = d
+      const d = pick([-5, -4, -3, -2, 2, 3, 4, 5, 6]);
+      const c = randInt(-6, 10);
+      const a = pick([2, 3, 4, 5, -2, -3]);
+      // ax + b = d(x - c) → ax + b = d x - d c → b + d c = d x - a x → b + d c = x(d - a)
+      // pick x ≠ c, then b = d(x-c) - a x
+      let x = randInt(-10, 16);
+      if (x === c) x = c + pick([-3, -2, 2, 3, 4]);
+      const b = d * (x - c) - a * x;
+      if (d - a === 0) return genLevel7(attempt);
+      const aDisp = a === 1 ? "x" : a === -1 ? "−x" : `${a}x`;
+      const bDisp = b >= 0 ? `+ ${b}` : `− ${-b}`;
+      const cDisp = c < 0 ? `x + ${-c}` : `x − ${c}`;
+      return {
+        level: 7,
+        topic: "Linear over linear = constant",
+        display: `(${aDisp} ${bDisp})/(${cDisp}) = ${d}`,
+        answer: x,
+        excluded: c,
+        steps: [
+          `Excluded: x ≠ ${c}. Multiply: ${aDisp} ${bDisp} = ${d}(${cDisp}).`,
+          `${aDisp} ${bDisp} = ${d}x − ${d * c}.`,
+          `Move terms: ${aDisp} − ${d}x = ${-d * c} − (${b}) → ${a - d}x = ${-d * c - b}.`,
+          `x = ${x}. Check undefined value.`,
+        ],
+      };
+    }
+    // check: multi-step with explicit verification emphasis
+    const c = pick([3, 4, 5, 6, 8, -3, -4]);
+    const b = randInt(-5, 12);
+    const add = pick([-6, -4, -3, 2, 3, 4, 5]);
+    const mult = randInt(2, 10) * (Math.random() < 0.3 ? -1 : 1);
+    const a = c * mult;
+    const x = mult + b;
+    if (x === b || a === 0) return genLevel7(attempt);
+    const rhs = c + add; // wait: a/(x-b) + add = rhs where a/(x-b)=c so rhs = c+add
+    const bDisp = b < 0 ? `x + ${-b}` : `x − ${b}`;
+    const addDisp = add >= 0 ? `+ ${add}` : `− ${-add}`;
+    return {
+      level: 7,
+      topic: "Solve, then prove it's defined",
+      display: `${a}/(${bDisp}) ${addDisp} = ${c + add}`,
+      answer: x,
+      excluded: b,
+      steps: [
+        `Note undefined at x = ${b}. Isolate: ${a}/(${bDisp}) = ${c + add} − (${add}) = ${c}.`,
+        `${a} = ${c}(${bDisp}) → ${bDisp} = ${mult} → x = ${x}.`,
+        `Check defined: ${x} ≠ ${b}. Substitute: ${a}/(${x}−(${b})) ${addDisp} = ${c} ${addDisp} = ${c + add}. ✓`,
+      ],
+    };
+  }
+
+  const GENERATORS = [null, genLevel1, genLevel2, genLevel3, genLevel4, genLevel5, genLevel6, genLevel7];
 
   function generateQuestion(level) {
-    level = Math.max(1, Math.min(6, level | 0));
+    level = Math.max(1, Math.min(MAX_LEVEL, level | 0));
     let q = GENERATORS[level]();
     // Safety retries if somehow invalid
     for (let i = 0; i < 5 && (!q || q.answer === q.excluded); i++) {
@@ -423,8 +588,14 @@
 
   // ─── Placement set ───────────────────────────────────────
   function buildPlacement() {
-    // ~6 questions across bands: 1,2,3,4,5,5 (emphasize rational)
-    const levels = [1, 2, 3, 4, 5, 5];
+    // ~6 questions across bands; include L6–L7 so placement can reach 7
+    const levels = [2, 3, 4, 5, 6, 7];
+    return levels.map((lv) => generateQuestion(lv));
+  }
+
+  function buildChallenge() {
+    // ~9 scored questions spanning L5–L7 (no adaptive mid-test)
+    const levels = [5, 5, 6, 6, 6, 7, 7, 7, 7];
     return levels.map((lv) => generateQuestion(lv));
   }
 
@@ -444,15 +615,25 @@
     const hard = results.filter((r) => r.level >= 5);
     const hardOk = hard.filter((r) => r.correct).length;
     if (hard.length && hardOk === 0) est = Math.min(est, 4);
-    if (hard.length && hardOk === hard.length && results.every((r) => r.correct)) est = 6;
-    return Math.max(1, Math.min(6, est));
+    const top = results.filter((r) => r.level >= 6);
+    const topOk = top.filter((r) => r.correct).length;
+    if (hard.length && hardOk === hard.length && results.every((r) => r.correct)) {
+      est = top.length && topOk === top.length ? 7 : 6;
+    } else if (top.length && topOk === top.length && hardOk === hard.length) {
+      est = Math.max(est, 6);
+    }
+    return Math.max(1, Math.min(MAX_LEVEL, est));
   }
 
   // ─── Persistence ─────────────────────────────────────────
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+      if (!raw) {
+        // Coach boost for new devices: start ready for L6–L7 stretch
+        state.level = 6;
+        return;
+      }
       const data = JSON.parse(raw);
       if (data.name) state.name = data.name;
       if (data.level) state.level = data.level;
@@ -460,6 +641,14 @@
       if (typeof data.totalCorrect === "number") state.totalCorrect = data.totalCorrect;
       if (typeof data.totalAnswered === "number") state.totalAnswered = data.totalAnswered;
       if (typeof data.sessionsCompleted === "number") state.sessionsCompleted = data.sessionsCompleted;
+      // Coach boost: if stored level < 6, bump to 6 (ready for L6–L7 / challenge)
+      if (state.level < 6) {
+        state.level = 6;
+        save();
+      } else if (state.level > MAX_LEVEL) {
+        state.level = MAX_LEVEL;
+        save();
+      }
     } catch (_) { /* ignore */ }
   }
 
@@ -501,7 +690,7 @@
       // 2 correct in a row → bump (especially if fast/confident)
       const need = fast || state.lastConfidence === "sure" ? 2 : 2;
       if (state.correctInRow >= need) {
-        if (state.level < 6) {
+        if (state.level < MAX_LEVEL) {
           state.level++;
           state.correctInRow = 0;
         }
@@ -546,7 +735,7 @@
     const accEl = $("#stat-acc");
     if (streakEl) streakEl.innerHTML = `🔥 <strong>${state.streak}</strong>`;
     if (levelEl)
-      levelEl.innerHTML = `Level <strong>${state.level}</strong>/6`;
+      levelEl.innerHTML = `Level <strong>${state.level}</strong>/${MAX_LEVEL}`;
     if (accEl) {
       const pct =
         state.totalAnswered > 0
@@ -556,13 +745,13 @@
     }
     // Hide stats on welcome
     const bar = $("#stats-bar");
-    if (bar) bar.classList.toggle("hidden", state.mode === "welcome");
+    if (bar) bar.classList.toggle("hidden", state.mode === "welcome" || state.mode === "settings");
   }
 
   function renderLevelDots(container, current) {
     if (!container) return;
     container.innerHTML = "";
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= MAX_LEVEL; i++) {
       const d = document.createElement("span");
       d.className = "level-dot" + (i <= current ? " on" : "") + (i === current ? " current" : "");
       d.title = LEVEL_NAMES[i];
@@ -570,8 +759,9 @@
     }
   }
 
-  // Placement questions held in memory
+  // Placement / challenge questions held in memory
   let placementQs = [];
+  let challengeQs = [];
   let pendingExample = null;
 
   function startPlacement() {
@@ -605,6 +795,40 @@
     showQuestion("practice");
   }
 
+  function modePrefix(mode) {
+    return mode === "placement" ? "p" : "q";
+  }
+
+  function modeTotal(mode) {
+    if (mode === "placement") return PLACEMENT_LEN;
+    if (mode === "challenge") return CHALLENGE_LEN;
+    return PRACTICE_LEN;
+  }
+
+  function modeIndex(mode) {
+    if (mode === "placement") return state.placementIndex;
+    if (mode === "challenge") return state.challengeIndex;
+    return state.practiceIndex;
+  }
+
+
+  function startChallenge() {
+    const nameInput = $("#name-input");
+    if (nameInput && nameInput.value.trim()) {
+      state.name = nameInput.value.trim();
+    }
+    save();
+    challengeQs = buildChallenge();
+    state.challengeIndex = 0;
+    state.challengeResults = [];
+    state.streak = 0;
+    state.correctInRow = 0;
+    state.wrongInRow = 0;
+    pendingExample = null;
+    showScreen("practice"); // reuse practice UI shell
+    showQuestion("challenge");
+  }
+
   function showQuestion(mode) {
     state.answered = false;
     state.lastConfidence = null;
@@ -613,32 +837,35 @@
     let q;
     if (mode === "placement") {
       q = placementQs[state.placementIndex];
+    } else if (mode === "challenge") {
+      q = challengeQs[state.challengeIndex];
     } else {
       q = generateQuestion(state.level);
-      // Bias toward level 5 if she's around there and needs practice
+      // Mix nearby levels so practice stays varied
       if (state.level === 4 && Math.random() < 0.25) q = generateQuestion(5);
-      if (state.level === 6 && Math.random() < 0.35) q = generateQuestion(5);
+      if (state.level === 6 && Math.random() < 0.3) q = generateQuestion(5);
+      if (state.level === 7 && Math.random() < 0.35) q = generateQuestion(pick([5, 6, 6]));
     }
     state.currentQ = q;
 
-    const prefix = mode === "placement" ? "p" : "q";
-    const total = mode === "placement" ? PLACEMENT_LEN : PRACTICE_LEN;
-    const idx = mode === "placement" ? state.placementIndex : state.practiceIndex;
+    const prefix = modePrefix(mode);
+    const total = modeTotal(mode);
+    const idx = modeIndex(mode);
 
-    $(`#${prefix}-mode-badge`).textContent =
-      mode === "placement" ? "Placement check" : "Practice";
-    $(`#${prefix}-mode-badge`).className =
-      "mode-badge" + (mode === "placement" ? " placement" : "");
-    $(`#${prefix}-progress-label`).textContent =
-      mode === "placement"
-        ? `Question ${idx + 1} of ${total}`
-        : `Question ${idx + 1} of ${total}`;
+    const badgeLabel =
+      mode === "placement" ? "Placement check" : mode === "challenge" ? "Level-up Challenge" : "Practice";
+    const badgeClass =
+      mode === "placement" ? " placement" : mode === "challenge" ? " challenge" : "";
+    $(`#${prefix}-mode-badge`).textContent = badgeLabel;
+    $(`#${prefix}-mode-badge`).className = "mode-badge" + badgeClass;
+    $(`#${prefix}-progress-label`).textContent = `Question ${idx + 1} of ${total}`;
     $(`#${prefix}-progress-fill`).style.width = `${((idx) / total) * 100}%`;
     $(`#${prefix}-topic`).textContent = q.topic;
     $(`#${prefix}-equation`).textContent = formatEq(q.display);
     const excl = $(`#${prefix}-excluded`);
     if (q.excluded != null) {
-      excl.textContent = `Remember: x ≠ ${q.excluded} (undefined)`;
+      const extra = q.excludedExtra != null ? ` and x ≠ ${q.excludedExtra}` : "";
+      excl.textContent = `Remember: x ≠ ${q.excluded}${extra} (undefined)`;
       excl.classList.remove("hidden");
     } else {
       excl.classList.add("hidden");
@@ -654,11 +881,13 @@
     $(`#${prefix}-actions-answer`).classList.remove("hidden");
     $(`#${prefix}-actions-next`).classList.add("hidden");
 
-    renderLevelDots($(`#${prefix}-dots`), mode === "placement" ? q.level : state.level);
+    renderLevelDots($(`#${prefix}-dots`), mode === "practice" ? state.level : q.level);
     $(`#${prefix}-level-name`).textContent =
       mode === "placement"
         ? `Exploring: ${LEVEL_NAMES[q.level]}`
-        : `Your level: ${state.level} — ${LEVEL_NAMES[state.level]}`;
+        : mode === "challenge"
+          ? `Challenge band: L${q.level} — ${LEVEL_NAMES[q.level]}`
+          : `Your level: ${state.level} — ${LEVEL_NAMES[state.level]}`;
 
     // Greeting
     const greet = $(`#${prefix}-greet`);
@@ -666,13 +895,15 @@
       greet.textContent =
         mode === "placement"
           ? `Hi ${state.name}! Quick check so we start in the right place.`
-          : `Let's practice, ${state.name}. You've got this.`;
+          : mode === "challenge"
+            ? `Level-up Challenge, ${state.name} — scored L5–L7. Show what you've got!`
+            : `Let's practice, ${state.name}. You've got this.`;
     }
   }
 
   function submitAnswer(mode) {
     if (state.answered) return;
-    const prefix = mode === "placement" ? "p" : "q";
+    const prefix = modePrefix(mode);
     const input = $(`#${prefix}-answer`);
     const raw = input.value;
     const parsed = parseAnswer(raw);
@@ -691,7 +922,10 @@
     const fast = elapsed < 25000; // under 25s feels confident/quick
 
     // Division by zero / excluded value
-    if (q.excluded != null && answersEqual(parsed, q.excluded)) {
+    const hitExcluded =
+      (q.excluded != null && answersEqual(parsed, q.excluded)) ||
+      (q.excludedExtra != null && answersEqual(parsed, q.excludedExtra));
+    if (hitExcluded) {
       showFeedback(prefix, "undefined", q, parsed);
       // Count as incorrect for adaptive
       recordResult(mode, false, q);
@@ -718,8 +952,8 @@
     $(`#${prefix}-actions-answer`).classList.add("hidden");
     $(`#${prefix}-actions-next`).classList.remove("hidden");
     // Update progress fill to include current
-    const total = mode === "placement" ? PLACEMENT_LEN : PRACTICE_LEN;
-    const idx = mode === "placement" ? state.placementIndex : state.practiceIndex;
+    const total = modeTotal(mode);
+    const idx = modeIndex(mode);
     $(`#${prefix}-progress-fill`).style.width = `${((idx + 1) / total) * 100}%`;
 
     updateHeaderStats();
@@ -731,6 +965,7 @@
     if (correct) state.totalCorrect++;
     const entry = { level: q.level, correct, topic: q.topic, display: q.display };
     if (mode === "placement") state.placementResults.push(entry);
+    else if (mode === "challenge") state.challengeResults.push(entry);
     else state.practiceResults.push(entry);
   }
 
@@ -782,6 +1017,13 @@
         return;
       }
       showQuestion("placement");
+    } else if (mode === "challenge") {
+      state.challengeIndex++;
+      if (state.challengeIndex >= CHALLENGE_LEN) {
+        finishChallenge();
+        return;
+      }
+      showQuestion("challenge");
     } else {
       state.practiceIndex++;
       if (state.practiceIndex >= PRACTICE_LEN) {
@@ -794,16 +1036,18 @@
 
   function trySimilar(mode) {
     // Stay on same level, generate similar (same level), don't advance index
+    // Challenge is scored — similar practice is allowed but doesn't change score already recorded
     state.answered = false;
     const q = generateQuestion(state.currentQ.level);
     state.currentQ = q;
     state.questionStart = Date.now();
-    const prefix = mode === "placement" ? "p" : "q";
+    const prefix = modePrefix(mode);
     $(`#${prefix}-equation`).textContent = formatEq(q.display);
     $(`#${prefix}-topic`).textContent = q.topic + " (similar)";
     const excl = $(`#${prefix}-excluded`);
     if (q.excluded != null) {
-      excl.textContent = `Remember: x ≠ ${q.excluded} (undefined)`;
+      const extra = q.excludedExtra != null ? ` and x ≠ ${q.excludedExtra}` : "";
+      excl.textContent = `Remember: x ≠ ${q.excluded}${extra} (undefined)`;
       excl.classList.remove("hidden");
     } else {
       excl.classList.add("hidden");
@@ -825,8 +1069,11 @@
     // Brief result then practice
     const correct = state.placementResults.filter((r) => r.correct).length;
     $("#summary-title").textContent = `Nice check-in, ${state.name}!`;
-    $("#summary-lead").textContent =
-      `You got ${correct} of ${PLACEMENT_LEN} on the placement. We'll start practice at Level ${est}.`;
+    let lead = `You got ${correct} of ${PLACEMENT_LEN} on the placement. We'll start practice at Level ${est}.`;
+    if (correct === PLACEMENT_LEN) {
+      lead += ` Perfect score — you're ready for Level 6–7 practice and the Level-up Challenge Test!`;
+    }
+    $("#summary-lead").textContent = lead;
     renderSummaryStats(state.placementResults, est);
     $("#summary-review").innerHTML = buildReviewHtml(state.placementResults);
     $("#btn-summary-continue").textContent = "Start practice →";
@@ -853,6 +1100,35 @@
     $("#btn-summary-continue").onclick = () => startPractice(true);
     showScreen("summary");
     maybeAutoSync("practice", state.practiceResults);
+  }
+
+
+  function finishChallenge() {
+    state.sessionsCompleted++;
+    // Soft bump toward challenge performance (cap at 7)
+    const correct = state.challengeResults.filter((r) => r.correct).length;
+    const acc = Math.round((100 * correct) / Math.max(1, state.challengeResults.length));
+    if (acc >= 80 && state.level < MAX_LEVEL) {
+      state.level = Math.min(MAX_LEVEL, Math.max(state.level, 6));
+      if (acc === 100) state.level = MAX_LEVEL;
+    }
+    save();
+    $("#summary-title").textContent = `Challenge complete, ${state.name}!`;
+    $("#summary-lead").textContent =
+      acc >= 90
+        ? `Outstanding — ${correct}/${CHALLENGE_LEN} (${acc}%). Level-up Challenge crushed. You're operating at the top band.`
+        : acc >= 70
+          ? `Strong challenge — ${correct}/${CHALLENGE_LEN} (${acc}%). Review misses below, then run it again when ready.`
+          : `Challenge score ${correct}/${CHALLENGE_LEN} (${acc}%). Use the review notes, practice L5–L7, then retry the Level-up Challenge.`;
+    renderSummaryStats(state.challengeResults, state.level);
+    $("#summary-review").innerHTML = buildReviewHtml(state.challengeResults);
+    $("#btn-summary-continue").textContent = "Back to home →";
+    $("#btn-summary-continue").onclick = () => {
+      showScreen("welcome");
+      refreshWelcome();
+    };
+    showScreen("summary");
+    maybeAutoSync("challenge", state.challengeResults);
   }
 
   function renderSummaryStats(results, level) {
@@ -914,7 +1190,7 @@
     const focusTopics = [...new Set(results.map((r) => r.topic))];
     return {
       app: "Afsa Helper · Algebra",
-      kind, // placement | practice
+      kind, // placement | practice | challenge
       learner: state.name || "Afsa",
       when: new Date().toISOString(),
       level: state.level,
@@ -941,7 +1217,7 @@
       ? payload.missedTopics.map((t) => `- ${t}`).join("\n")
       : "- (none)";
     return [
-      `## ${payload.kind === "placement" ? "Placement" : "Practice"} session`,
+      `## ${payload.kind === "placement" ? "Placement" : payload.kind === "challenge" ? "Level-up Challenge" : "Practice"} session`,
       "",
       `- **Learner:** ${payload.learner}`,
       `- **When:** ${payload.when}`,
@@ -1024,20 +1300,26 @@
       save();
       startPractice(true);
     });
+    const btnChallenge = $("#btn-start-challenge");
+    if (btnChallenge) btnChallenge.addEventListener("click", startChallenge);
 
     $("#p-submit").addEventListener("click", () => submitAnswer("placement"));
-    $("#q-submit").addEventListener("click", () => submitAnswer("practice"));
+    $("#q-submit").addEventListener("click", () => submitAnswer(state.mode === "challenge" ? "challenge" : "practice"));
     $("#p-next").addEventListener("click", () => nextQuestion("placement"));
-    $("#q-next").addEventListener("click", () => nextQuestion("practice"));
+    $("#q-next").addEventListener("click", () => nextQuestion(state.mode === "challenge" ? "challenge" : "practice"));
     $("#p-similar").addEventListener("click", () => trySimilar("placement"));
-    $("#q-similar").addEventListener("click", () => trySimilar("practice"));
+    $("#q-similar").addEventListener("click", () => trySimilar(state.mode === "challenge" ? "challenge" : "practice"));
 
     ["p-answer", "q-answer"].forEach((id) => {
       const el = $("#" + id);
       el.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          const mode = id.startsWith("p") ? "placement" : "practice";
+          const mode = id.startsWith("p")
+            ? "placement"
+            : state.mode === "challenge"
+              ? "challenge"
+              : "practice";
           if (!state.answered) submitAnswer(mode);
           else nextQuestion(mode);
         }
@@ -1117,12 +1399,13 @@
   function refreshWelcome() {
     $("#name-input").value = state.name || "Afsa";
     const resume = $("#resume-note");
+    const bits = [];
     if (state.totalAnswered > 0) {
-      resume.classList.remove("hidden");
-      resume.textContent = `Welcome back! Level ${state.level} · ${LEVEL_NAMES[state.level]} · ${state.sessionsCompleted} session(s) saved.`;
-    } else {
-      resume.classList.add("hidden");
+      bits.push(`Welcome back! Level ${state.level} · ${LEVEL_NAMES[state.level]} · ${state.sessionsCompleted} session(s) saved.`);
     }
+    bits.push(`Coach note: after a 100% placement you're ready for Level 6–7 practice and the Level-up Challenge Test.`);
+    resume.classList.remove("hidden");
+    resume.textContent = bits.join(" ");
   }
 
   // ─── Init ────────────────────────────────────────────────
@@ -1132,6 +1415,12 @@
     refreshWelcome();
     updateHeaderStats();
     showScreen("welcome");
+    const params = new URLSearchParams(location.search);
+    const hash = (location.hash || "").replace(/^#/, "");
+    if (params.get("challenge") === "1" || hash === "challenge") {
+      // Deep link from home "Tests & assignments"
+      setTimeout(() => startChallenge(), 0);
+    }
   }
 
   if (document.readyState === "loading") {
