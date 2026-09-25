@@ -3,19 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#c45c26" />
-  <meta name="description" content="AfsasWorld Quizzes — JSONBin-driven tests and assignments for Afsa." />
+  <meta name="theme-color" content="#7C5CFF" />
+  <meta name="description" content="AfsasWorld Quizzes — tests and assignments for Afsa." />
   <title>AfsasWorld · Quizzes</title>
-  <link rel="stylesheet" href="styles.20260925d.css" />
+  <link rel="stylesheet" href="styles.20260925e.css" />
 </head>
 <body>
+  <div class="blobs" aria-hidden="true">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+  </div>
+
   <div class="app">
     <header class="header">
       <div class="brand">
         <a class="brand-mark" href="../" aria-label="AfsasWorld home">A</a>
         <div>
           <h1>AfsasWorld · Quizzes</h1>
-          <div class="tagline">Tests &amp; assignments · JSONBin</div>
+          <div class="tagline">Tests &amp; assignments</div>
         </div>
       </div>
       <div class="header-actions">
@@ -23,13 +28,12 @@
       </div>
     </header>
 
-
     <!-- CATALOG -->
     <section id="screen-catalog" class="screen active" aria-label="Test catalog">
       <div class="card welcome-hero">
         <div class="welcome-emoji" aria-hidden="true">📝</div>
         <h2 id="site-title">Quizzes</h2>
-        <p class="lead" id="site-blurb">Pick a test. Scores save to JSONBin automatically — no key needed.</p>
+        <p class="lead" id="site-blurb">Pick a test. Scores save automatically — no key needed.</p>
         <p id="catalog-status" class="status-line" role="status">Loading catalog…</p>
       </div>
       <div id="test-list" class="test-list" aria-live="polite"></div>
@@ -65,16 +69,37 @@
           <div class="progress-fill" id="q-progress-fill"></div>
         </div>
       </div>
-      <div class="card">
-        <span class="mode-badge" id="q-type-badge">Question</span>
-        <p class="prompt" id="q-prompt"></p>
-        <p class="prompt-detail hidden" id="q-prompt-detail"></p>
-        <div id="q-answer-area" class="answer-area"></div>
-        <div id="q-feedback" class="feedback hidden" role="status"></div>
-        <div class="btn-row">
-          <button type="button" class="btn-primary" id="btn-check">Check answer</button>
-          <button type="button" class="btn-teal hidden" id="btn-next">Next →</button>
+      <div class="question-layout">
+        <div class="card question-card">
+          <span class="mode-badge" id="q-type-badge">Question</span>
+          <p class="prompt" id="q-prompt"></p>
+          <p class="prompt-detail hidden" id="q-prompt-detail"></p>
+          <div id="q-answer-area" class="answer-area"></div>
+          <div id="q-feedback" class="feedback hidden" role="status"></div>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-check">Check answer</button>
+            <button type="button" class="btn-teal hidden" id="btn-next">Next →</button>
+          </div>
         </div>
+
+        <aside class="scratch-pad" id="scratch-pad" aria-label="Scratch pad for working out answers">
+          <div class="scratch-pad-header">
+            <span class="scratch-pad-title">✏️ Scratch pad</span>
+            <div class="scratch-tools" role="toolbar" aria-label="Drawing tools">
+              <button type="button" class="scratch-swatch active" data-color="#1f2937" title="Black" aria-label="Black pen" style="--swatch:#1f2937"></button>
+              <button type="button" class="scratch-swatch" data-color="#2563eb" title="Blue" aria-label="Blue pen" style="--swatch:#2563eb"></button>
+              <button type="button" class="scratch-swatch" data-color="#dc2626" title="Red" aria-label="Red pen" style="--swatch:#dc2626"></button>
+              <button type="button" class="scratch-swatch" data-color="#16a34a" title="Green" aria-label="Green pen" style="--swatch:#16a34a"></button>
+              <button type="button" class="scratch-swatch" data-color="#7c3aed" title="Purple" aria-label="Purple pen" style="--swatch:#7c3aed"></button>
+              <button type="button" class="scratch-tool" id="scratch-eraser" data-tool="eraser" title="Eraser" aria-label="Eraser">🧽</button>
+              <button type="button" class="scratch-tool scratch-clear" id="scratch-clear" title="Clear pad" aria-label="Clear scratch pad">Clear</button>
+            </div>
+          </div>
+          <div class="scratch-canvas-wrap">
+            <canvas id="scratch-canvas" width="600" height="360"></canvas>
+          </div>
+          <p class="scratch-hint">Draw with finger or Apple Pencil — doodles stay on this device only.</p>
+        </aside>
       </div>
     </section>
 
@@ -100,7 +125,7 @@
     <section id="screen-history" class="screen" aria-label="Attempt history">
       <div class="card">
         <h2>Attempt history</h2>
-        <p class="lead">Saved attempts from JSONBin (newest first).</p>
+        <p class="lead">Saved attempts (newest first).</p>
         <div class="name-form" style="text-align:left;margin-bottom:0.75rem">
           <label for="history-filter">Filter by test</label>
           <select id="history-filter" class="answer-input" style="cursor:pointer">
@@ -132,10 +157,14 @@
       <div id="detail-answers" class="review-list" aria-label="Attempt answers"></div>
     </section>
 
-    <!-- PARENT SETTINGS -->
-    
+    <footer class="app-foot">
+      <div class="powered">
+        <img class="powered-mark" src="../assets/grok-bot-mark.svg" width="24" height="24" alt="" />
+        <span>Powered by <strong>Grok Bot</strong></span>
+      </div>
+    </footer>
   </div>
 
-  <script src="app.20260925d.js"></script>
+  <script src="app.20260925e.js"></script>
 </body>
 </html>
