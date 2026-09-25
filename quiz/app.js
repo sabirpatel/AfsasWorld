@@ -1,4 +1,4 @@
-/* AfsasWorld Quizzes — JSONBin public bin AfsaQuizPublic (CRUD attempts) */
+/* AfsasWorld Quizzes — JSONBin public bin AfsaQuizPublic (CRUD attempts) + scratch pad */
 (function () {
   "use strict";
 
@@ -25,10 +25,244 @@
     viewingAttempt: null,
   };
 
+
+  /* —— Scratch pad (finger / Apple Pencil; not saved to JSONBin) —— */
+  let scratch = null;
+
+  function destroyScratchPad() {
+    if (!scratch) return;
+    try {
+      if (scratch.ro) scratch.ro.disconnect();
+    } catch (_) {}
+    const canvas = scratch.canvas;
+    if (canvas) {
+      canvas.removeEventListener("pointerdown", scratch.onDown);
+      canvas.removeEventListener("pointermove", scratch.onMove);
+      canvas.removeEventListener("pointerup", scratch.onUp);
+      canvas.removeEventListener("pointercancel", scratch.onUp);
+      canvas.removeEventListener("lostpointercapture", scratch.onUp);
+    }
+    if (scratch.onToolClick) {
+      scratch.toolButtons.forEach((btn) => {
+        btn.removeEventListener("click", scratch.onToolClick);
+      });
+    }
+    scratch = null;
+  }
+
+  function clearScratchPad() {
+    if (!scratch) return;
+    const { ctx, backing, bctx, canvas } = scratch;
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.clearRect(0, 0, backing.width, backing.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function initScratchPad() {
+    const canvas = $("#scratch-canvas");
+    const pad = $("#scratch-pad");
+    if (!canvas || !pad) return;
+
+    destroyScratchPad();
+
+    const backing = document.createElement("canvas");
+    const bctx = backing.getContext("2d");
+    const ctx = canvas.getContext("2d");
+
+    let tool = "pen";
+    let color = "#1f2937";
+    let drawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let activePointer = null;
+
+    function dpr() {
+      return Math.max(1, window.devicePixelRatio || 1);
+    }
+
+    function resize() {
+      const wrap = canvas.parentElement || canvas;
+      const rect = wrap.getBoundingClientRect();
+      const cssW = Math.max(1, Math.floor(rect.width));
+      const cssH = Math.max(220, Math.floor(rect.height || 220));
+      const ratio = dpr();
+      const w = Math.max(1, Math.floor(cssW * ratio));
+      const h = Math.max(1, Math.floor(cssH * ratio));
+
+      const prevW = backing.width;
+      const prevH = backing.height;
+      let snapshot = null;
+      if (prevW > 0 && prevH > 0) {
+        snapshot = document.createElement("canvas");
+        snapshot.width = prevW;
+        snapshot.height = prevH;
+        snapshot.getContext("2d").drawImage(backing, 0, 0);
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = cssW + "px";
+      canvas.style.height = cssH + "px";
+      backing.width = w;
+      backing.height = h;
+
+      bctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (snapshot) {
+        bctx.drawImage(snapshot, 0, 0, w, h);
+      }
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(backing, 0, 0);
+    }
+
+    function pos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = dpr();
+      return {
+        x: (e.clientX - rect.left) * ratio,
+        y: (e.clientY - rect.top) * ratio,
+      };
+    }
+
+    function strokeBoth(x0, y0, x1, y1) {
+      const ratio = dpr();
+      const targets = [bctx, ctx];
+      targets.forEach((c) => {
+        c.save();
+        c.lineCap = "round";
+        c.lineJoin = "round";
+        if (tool === "eraser") {
+          c.globalCompositeOperation = "destination-out";
+          c.strokeStyle = "rgba(0,0,0,1)";
+          c.lineWidth = 22 * ratio;
+        } else {
+          c.globalCompositeOperation = "source-over";
+          c.strokeStyle = color;
+          c.lineWidth = 3.25 * ratio;
+        }
+        c.beginPath();
+        c.moveTo(x0, y0);
+        c.lineTo(x1, y1);
+        c.stroke();
+        c.restore();
+      });
+    }
+
+    function onDown(e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.preventDefault();
+      activePointer = e.pointerId;
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      drawing = true;
+      const p = pos(e);
+      lastX = p.x;
+      lastY = p.y;
+      strokeBoth(lastX, lastY, lastX + 0.01, lastY + 0.01);
+    }
+
+    function onMove(e) {
+      if (!drawing || e.pointerId !== activePointer) return;
+      e.preventDefault();
+      const p = pos(e);
+      strokeBoth(lastX, lastY, p.x, p.y);
+      lastX = p.x;
+      lastY = p.y;
+    }
+
+    function onUp(e) {
+      if (e.pointerId !== activePointer && activePointer != null) return;
+      drawing = false;
+      activePointer = null;
+      try {
+        if (canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
+
+    canvas.style.touchAction = "none";
+    canvas.addEventListener("pointerdown", onDown, { passive: false });
+    canvas.addEventListener("pointermove", onMove, { passive: false });
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("lostpointercapture", onUp);
+
+    const toolButtons = Array.from(
+      pad.querySelectorAll(".scratch-swatch, .scratch-tool[data-tool], #scratch-clear")
+    );
+
+    function syncToolUI() {
+      pad.querySelectorAll(".scratch-swatch").forEach((btn) => {
+        btn.classList.toggle("active", tool === "pen" && btn.dataset.color === color);
+      });
+      const eraser = $("#scratch-eraser");
+      if (eraser) eraser.classList.toggle("active", tool === "eraser");
+    }
+
+    function onToolClick(e) {
+      const btn = e.currentTarget;
+      if (btn.id === "scratch-clear") {
+        clearScratchPad();
+        return;
+      }
+      if (btn.dataset.tool === "eraser") {
+        tool = "eraser";
+        syncToolUI();
+        return;
+      }
+      if (btn.dataset.color) {
+        tool = "pen";
+        color = btn.dataset.color;
+        syncToolUI();
+      }
+    }
+
+    toolButtons.forEach((btn) => btn.addEventListener("click", onToolClick));
+    syncToolUI();
+
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => resize());
+      ro.observe(canvas.parentElement || canvas);
+    } else {
+      window.addEventListener("resize", resize);
+    }
+
+    resize();
+    // second pass after layout settles (iPad rotation / wide grid)
+    requestAnimationFrame(() => resize());
+
+    scratch = {
+      canvas,
+      ctx,
+      backing,
+      bctx,
+      onDown,
+      onMove,
+      onUp,
+      onToolClick,
+      toolButtons,
+      ro,
+      _onWinResize: typeof ResizeObserver === "undefined" ? resize : null,
+    };
+  }
+
+
   function showScreen(name) {
+    const prev = $(".screen.active");
+    const prevName = prev && prev.id ? prev.id.replace(/^screen-/, "") : null;
     $$(".screen").forEach((el) => el.classList.remove("active"));
     const screen = $(`#screen-${name}`);
     if (screen) screen.classList.add("active");
+
+    if (name === "question") {
+      initScratchPad();
+    } else if (prevName === "question" || scratch) {
+      destroyScratchPad();
+    }
   }
 
   function setStatus(el, msg, kind) {
@@ -283,8 +517,8 @@
     state.selectedChoiceId = null;
     state.startedAt = Date.now();
     state.pendingAttempt = null;
-    renderQuestion();
     showScreen("question");
+    renderQuestion();
   }
 
   function typeLabel(type) {
@@ -330,6 +564,9 @@
     $("#btn-check").classList.remove("hidden");
     $("#btn-check").disabled = false;
     $("#btn-next").classList.add("hidden");
+
+    if (scratch) clearScratchPad();
+    else initScratchPad();
 
     if (q.type === "multiple_choice") {
       const list = document.createElement("div");
