@@ -1,10 +1,12 @@
-/* AfsasWorld Quizzes — JSONBin-backed quiz player */
+/* AfsasWorld Quizzes — JSONBin-backed quiz player (CRUD attempts) */
 (function () {
   "use strict";
 
   const BIN_ID = "6ab6df70ac6210605af59ddd";
-  const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?meta=false`;
+  const BIN_LATEST = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest?meta=false`;
+  const BIN_PUT = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
   const KEY_STORAGE = "afsa_jsonbin_key";
+  const ATTEMPTS_CAP = 200;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -19,6 +21,10 @@
     selectedChoiceId: null,
     checked: false,
     returnScreen: "catalog",
+    startedAt: null,
+    pendingAttempt: null,
+    historyFilterTestId: null,
+    viewingAttempt: null,
   };
 
   function showScreen(name) {
@@ -49,6 +55,19 @@
     } catch (_) { /* ignore */ }
   }
 
+  function requireKeyHeaders() {
+    const key = getStoredKey();
+    if (!key) {
+      const err = new Error("JSONBin Master Key required. Open Settings and paste the parent key.");
+      err.code = "NO_KEY";
+      throw err;
+    }
+    return {
+      "X-Master-Key": key,
+      "X-Access-Key": key,
+    };
+  }
+
   function shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -64,6 +83,14 @@
       .replace(/\s+/g, " ")
       .replace(/[“”"']/g, "")
       .trim();
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   function parseRoute() {
@@ -84,24 +111,75 @@
     }
   }
 
+  function makeAttemptId() {
+    const ts = Date.now();
+    const rand = Math.random().toString(36).slice(2, 8);
+    return `att_${ts}_${rand}`;
+  }
+
   async function fetchCatalog() {
     const headers = { Accept: "application/json" };
-    const key = getStoredKey();
-    if (key) {
-      // Support either master or access key depending on what parent pasted
-      headers["X-Master-Key"] = key;
-      headers["X-Access-Key"] = key;
-    }
-    const res = await fetch(BIN_URL, { headers, cache: "no-store" });
+    Object.assign(headers, requireKeyHeaders());
+    const res = await fetch(BIN_LATEST, { headers, cache: "no-store" });
     if (res.status === 401 || res.status === 403) {
-      const err = new Error("JSONBin returned " + res.status + ". Add a key in Settings if the bin is private.");
+      const err = new Error(
+        "JSONBin returned " + res.status + ". Check the Master Key in Settings (bin is private)."
+      );
       err.code = res.status;
       throw err;
     }
     if (!res.ok) {
       throw new Error("Could not load catalog (HTTP " + res.status + ").");
     }
-    return res.json();
+    const data = await res.json();
+    if (!Array.isArray(data.attempts)) data.attempts = [];
+    if (!Array.isArray(data.tests)) data.tests = [];
+    return data;
+  }
+
+  async function saveCatalog(record) {
+    const headers = Object.assign(
+      {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      requireKeyHeaders()
+    );
+    const body = Object.assign({}, record, {
+      updatedAt: new Date().toISOString(),
+    });
+    if (!Array.isArray(body.attempts)) body.attempts = [];
+    const res = await fetch(BIN_PUT, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    if (res.status === 401 || res.status === 403) {
+      const err = new Error(
+        "Save failed (HTTP " + res.status + "). Check the Master Key in Settings."
+      );
+      err.code = res.status;
+      throw err;
+    }
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const j = await res.json();
+        detail = j && (j.message || j.error) ? ": " + (j.message || j.error) : "";
+      } catch (_) { /* ignore */ }
+      throw new Error("Could not save catalog (HTTP " + res.status + ")" + detail);
+    }
+    // JSONBin PUT returns { record, metadata }; prefer record when present
+    let out = body;
+    try {
+      const j = await res.json();
+      if (j && j.record) out = j.record;
+    } catch (_) { /* use body we sent */ }
+    if (!Array.isArray(out.attempts)) out.attempts = [];
+    state.catalog = out;
+    state.tests = publishedTests(out);
+    return out;
   }
 
   function publishedTests(catalog) {
@@ -110,6 +188,12 @@
       .slice()
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     return list;
+  }
+
+  function showSetupScreen(message, kind) {
+    setStatus($("#setup-status"), message || "", kind || "");
+    $("#setup-jsonbin-key").value = "";
+    showScreen("setup");
   }
 
   function renderCatalog() {
@@ -129,7 +213,11 @@
       setStatus(status, "No published tests yet.", "");
       return;
     }
-    setStatus(status, state.tests.length + " published test" + (state.tests.length === 1 ? "" : "s"), "ok");
+    setStatus(
+      status,
+      state.tests.length + " published test" + (state.tests.length === 1 ? "" : "s"),
+      "ok"
+    );
 
     state.tests.forEach((t) => {
       const btn = document.createElement("button");
@@ -152,17 +240,18 @@
     });
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
   async function loadCatalogAndRoute() {
+    if (!getStoredKey()) {
+      showSetupScreen(
+        "Paste the JSONBin Master Key (parent), then Save. Required because the quiz bin is private.",
+        ""
+      );
+      return;
+    }
+
     const status = $("#catalog-status");
     setStatus(status, "Loading catalog…", "");
+    showScreen("catalog");
     try {
       const data = await fetchCatalog();
       state.catalog = data;
@@ -179,6 +268,10 @@
     } catch (err) {
       state.catalog = null;
       state.tests = [];
+      if (err.code === "NO_KEY" || err.code === 401 || err.code === 403) {
+        showSetupScreen(err.message || "Key required or invalid.", "err");
+        return;
+      }
       renderCatalog();
       setStatus(status, err.message || "Failed to load catalog.", "err");
       showScreen("catalog");
@@ -231,6 +324,8 @@
     state.answers = [];
     state.checked = false;
     state.selectedChoiceId = null;
+    state.startedAt = Date.now();
+    state.pendingAttempt = null;
     renderQuestion();
     showScreen("question");
   }
@@ -254,7 +349,8 @@
     const total = state.queue.length;
     const n = state.index + 1;
     $("#q-progress-label").textContent = `Question ${n} of ${total}`;
-    $("#q-points-label").textContent = q.points != null ? `${q.points} pt${q.points === 1 ? "" : "s"}` : "";
+    $("#q-points-label").textContent =
+      q.points != null ? `${q.points} pt${q.points === 1 ? "" : "s"}` : "";
     $("#q-progress-fill").style.width = `${((n - 1) / total) * 100}%`;
     $("#q-type-badge").textContent = typeLabel(q.type);
     $("#q-prompt").textContent = q.prompt || "";
@@ -315,9 +411,8 @@
       });
       area.appendChild(row);
     } else {
-      // numeric or short_answer
       const input = document.createElement("input");
-      input.type = q.type === "numeric" ? "text" : "text";
+      input.type = "text";
       input.className = "answer-input";
       input.id = "answer-input";
       input.autocomplete = "off";
@@ -348,11 +443,13 @@
       const text = normalizeText(raw).replace(/,/g, "");
       const accept = Array.isArray(ans.accept) ? ans.accept : [];
       for (const a of accept) {
-        if (normalizeText(a) === text || normalizeText(a).replace(/\s*=\s*/g, "=") === text.replace(/\s*=\s*/g, "=")) {
+        if (
+          normalizeText(a) === text ||
+          normalizeText(a).replace(/\s*=\s*/g, "=") === text.replace(/\s*=\s*/g, "=")
+        ) {
           return { ok: true, given: raw, expected: ans.value };
         }
       }
-      // Extract first number-like token
       const m = text.match(/-?\d+(?:\.\d+)?/);
       if (m && ans.value != null) {
         const num = parseFloat(m[0]);
@@ -364,7 +461,6 @@
       }
       return { ok: false, given: raw, expected: ans.value };
     }
-    // short_answer
     const text = normalizeText(raw);
     const accept = Array.isArray(ans.accept) ? ans.accept : [];
     const match = ans.match || "contains";
@@ -373,9 +469,15 @@
       const na = normalizeText(a);
       if (!na) continue;
       if (match === "exact") {
-        if (text === na) { ok = true; break; }
+        if (text === na) {
+          ok = true;
+          break;
+        }
       } else {
-        if (text.includes(na) || na.includes(text)) { ok = true; break; }
+        if (text.includes(na) || na.includes(text)) {
+          ok = true;
+          break;
+        }
       }
     }
     return { ok, given: raw, expected: accept[0] || "" };
@@ -436,7 +538,6 @@
     feedback.innerHTML = html;
     feedback.classList.remove("hidden");
 
-    // Visual for choices
     if (q.type === "multiple_choice") {
       $$(".choice-btn").forEach((b) => {
         b.disabled = true;
@@ -463,32 +564,88 @@
     nextBtn.textContent = state.index + 1 >= state.queue.length ? "See results →" : "Next →";
 
     const total = state.queue.length;
-    $("#q-progress-fill").style.width = `${(state.index + 1) / total * 100}%`;
+    $("#q-progress-fill").style.width = `${((state.index + 1) / total) * 100}%`;
   }
 
   function goNext() {
     if (state.index + 1 >= state.queue.length) {
-      showResults();
+      finishAndShowResults();
     } else {
       state.index += 1;
       renderQuestion();
     }
   }
 
-  function showResults() {
+  function buildAttempt() {
+    const test = state.currentTest || {};
     const answers = state.answers;
-    const earned = answers.reduce((s, a) => s + (a.ok ? a.points : 0), 0);
-    const possible = answers.reduce((s, a) => s + a.points, 0) || 1;
-    const pct = Math.round((earned / possible) * 100);
+    const correct = answers.filter((a) => a.ok).length;
+    const total = answers.length;
+    const pointsEarned = answers.reduce((s, a) => s + (a.ok ? a.points : 0), 0);
+    const pointsPossible = answers.reduce((s, a) => s + a.points, 0) || 1;
+    const percent = Math.round((pointsEarned / pointsPossible) * 100);
+    const settings = test.settings || {};
+    const passAt = settings.passingScorePercent != null ? Number(settings.passingScorePercent) : 70;
+    const passed = percent >= passAt;
+    const finishedAt = new Date().toISOString();
+    const durationSec = state.startedAt
+      ? Math.max(0, Math.round((Date.now() - state.startedAt) / 1000))
+      : 0;
+
+    return {
+      id: makeAttemptId(),
+      testId: test.id || "",
+      testName: test.name || test.id || "",
+      subject: test.subject || "",
+      topic: test.topic || "",
+      finishedAt,
+      durationSec,
+      score: {
+        correct,
+        total,
+        pointsEarned,
+        pointsPossible,
+        percent,
+        passed,
+      },
+      answers: answers.map((a) => ({
+        questionId: a.questionId,
+        prompt: a.prompt || "",
+        ok: !!a.ok,
+        given: a.given == null ? "" : String(typeof a.given === "boolean" ? (a.given ? "true" : "false") : a.given),
+        expected: a.expected == null ? "" : String(typeof a.expected === "boolean" ? (a.expected ? "true" : "false") : a.expected),
+        points: a.points,
+      })),
+    };
+  }
+
+  async function persistAttempt(attempt) {
+    let catalog = state.catalog;
+    try {
+      catalog = await fetchCatalog();
+    } catch (_) {
+      if (!catalog) throw new Error("No catalog loaded; cannot save attempt.");
+    }
+    const attempts = Array.isArray(catalog.attempts) ? catalog.attempts.slice() : [];
+    // Avoid duplicate if same id already present (retry)
+    const without = attempts.filter((a) => a && a.id !== attempt.id);
+    without.unshift(attempt);
+    catalog.attempts = without.slice(0, ATTEMPTS_CAP);
+    return saveCatalog(catalog);
+  }
+
+  async function finishAndShowResults() {
+    const attempt = buildAttempt();
+    state.pendingAttempt = attempt;
+    const score = attempt.score;
     const settings = (state.currentTest && state.currentTest.settings) || {};
     const passAt = settings.passingScorePercent != null ? Number(settings.passingScorePercent) : 70;
-    const passed = pct >= passAt;
 
-    $("#results-emoji").textContent = passed ? "🎉" : "💪";
-    $("#results-title").textContent = passed ? "You passed!" : "Keep practicing";
-    $("#results-score").textContent = `${pct}%`;
+    $("#results-emoji").textContent = score.passed ? "🎉" : "💪";
+    $("#results-title").textContent = score.passed ? "You passed!" : "Keep practicing";
+    $("#results-score").textContent = `${score.percent}%`;
     $("#results-summary").textContent =
-      `${earned} of ${possible} points · passing is ${passAt}%` +
+      `${score.pointsEarned} of ${score.pointsPossible} points · passing is ${passAt}%` +
       (state.currentTest ? ` · ${state.currentTest.name}` : "");
 
     const retryBtn = $("#btn-retry");
@@ -497,7 +654,43 @@
 
     $("#review-list").classList.add("hidden");
     $("#review-list").innerHTML = "";
+    $("#btn-retry-save").classList.add("hidden");
+    setStatus($("#results-save-status"), "Saving to JSONBin…", "");
     showScreen("results");
+
+    try {
+      await persistAttempt(attempt);
+      setStatus($("#results-save-status"), "Saved to JSONBin", "ok");
+      state.pendingAttempt = null;
+    } catch (err) {
+      setStatus(
+        $("#results-save-status"),
+        (err && err.message) || "Save failed.",
+        "err"
+      );
+      $("#btn-retry-save").classList.remove("hidden");
+    }
+  }
+
+  async function retrySave() {
+    if (!state.pendingAttempt) {
+      setStatus($("#results-save-status"), "Nothing to retry.", "");
+      return;
+    }
+    setStatus($("#results-save-status"), "Saving to JSONBin…", "");
+    $("#btn-retry-save").classList.add("hidden");
+    try {
+      await persistAttempt(state.pendingAttempt);
+      setStatus($("#results-save-status"), "Saved to JSONBin", "ok");
+      state.pendingAttempt = null;
+    } catch (err) {
+      setStatus(
+        $("#results-save-status"),
+        (err && err.message) || "Save failed.",
+        "err"
+      );
+      $("#btn-retry-save").classList.remove("hidden");
+    }
   }
 
   function renderReview() {
@@ -506,18 +699,24 @@
     state.answers.forEach((a, i) => {
       const div = document.createElement("div");
       div.className = "review-item";
-      let givenStr = formatGiven(a);
-      let expectedStr = formatExpected(a);
+      const givenStr = formatGiven(a);
+      const expectedStr = formatExpected(a);
       div.innerHTML =
         `<div class="ri-head">` +
         `<span class="ri-num">Q${i + 1} · ${escapeHtml(typeLabel(a.type))}</span>` +
         `<span class="ri-mark ${a.ok ? "ok" : "err"}">${a.ok ? "Correct" : "Missed"}</span>` +
         `</div>` +
         `<div class="ri-prompt">${escapeHtml(a.prompt || "")}</div>` +
-        (a.promptDetail ? `<div class="ri-line" style="font-family:var(--mono);margin-bottom:0.35rem">${escapeHtml(a.promptDetail)}</div>` : "") +
+        (a.promptDetail
+          ? `<div class="ri-line" style="font-family:var(--mono);margin-bottom:0.35rem">${escapeHtml(a.promptDetail)}</div>`
+          : "") +
         `<div class="ri-line">Your answer: <strong>${escapeHtml(givenStr)}</strong></div>` +
-        (!a.ok ? `<div class="ri-line">Expected: <strong>${escapeHtml(expectedStr)}</strong></div>` : "") +
-        (a.explanation ? `<div class="ri-explain">${escapeHtml(a.explanation)}</div>` : "");
+        (!a.ok
+          ? `<div class="ri-line">Expected: <strong>${escapeHtml(expectedStr)}</strong></div>`
+          : "") +
+        (a.explanation
+          ? `<div class="ri-explain">${escapeHtml(a.explanation)}</div>`
+          : "");
       list.appendChild(div);
     });
     list.classList.remove("hidden");
@@ -526,7 +725,10 @@
   function formatGiven(a) {
     if (a.type === "true_false") return a.given === true || a.given === "true" ? "True" : "False";
     if (a.type === "multiple_choice") {
-      const q = state.queue.find((x) => x.id === a.questionId);
+      const q =
+        state.queue.find((x) => x.id === a.questionId) ||
+        (state.currentTest &&
+          (state.currentTest.questions || []).find((x) => x.id === a.questionId));
       const choice = q && (q.choices || []).find((c) => c.id === a.given);
       return choice ? choice.text : String(a.given);
     }
@@ -536,12 +738,208 @@
   function formatExpected(a) {
     if (a.type === "true_false") return a.expected ? "True" : "False";
     if (a.type === "multiple_choice") {
-      const q = state.queue.find((x) => x.id === a.questionId) ||
-        (state.currentTest && (state.currentTest.questions || []).find((x) => x.id === a.questionId));
+      const q =
+        state.queue.find((x) => x.id === a.questionId) ||
+        (state.currentTest &&
+          (state.currentTest.questions || []).find((x) => x.id === a.questionId));
       const choice = q && (q.choices || []).find((c) => c.id === a.expected);
       return choice ? choice.text : String(a.expected);
     }
     return String(a.expected == null ? "" : a.expected);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return String(iso);
+    }
+  }
+
+  function getAttemptsList() {
+    const all = (state.catalog && Array.isArray(state.catalog.attempts)
+      ? state.catalog.attempts
+      : []
+    ).filter(Boolean);
+    if (!state.historyFilterTestId) return all;
+    return all.filter((a) => a.testId === state.historyFilterTestId);
+  }
+
+  function renderHistory() {
+    const listEl = $("#history-list");
+    const status = $("#history-status");
+    const filter = $("#history-filter");
+    if (!listEl) return;
+
+    // Populate filter options once from known tests + attempt test names
+    if (filter) {
+      const prev = state.historyFilterTestId || "";
+      const opts = [{ id: "", label: "All tests" }];
+      const seen = new Set();
+      (state.tests || []).forEach((t) => {
+        if (t && t.id && !seen.has(t.id)) {
+          seen.add(t.id);
+          opts.push({ id: t.id, label: t.name || t.id });
+        }
+      });
+      ((state.catalog && state.catalog.attempts) || []).forEach((a) => {
+        if (a && a.testId && !seen.has(a.testId)) {
+          seen.add(a.testId);
+          opts.push({ id: a.testId, label: a.testName || a.testId });
+        }
+      });
+      filter.innerHTML = opts
+        .map(
+          (o) =>
+            `<option value="${escapeHtml(o.id)}"${o.id === prev ? " selected" : ""}>${escapeHtml(o.label)}</option>`
+        )
+        .join("");
+    }
+
+    const attempts = getAttemptsList();
+    listEl.innerHTML = "";
+    if (!attempts.length) {
+      setStatus(status, "No saved attempts yet.", "");
+      return;
+    }
+    setStatus(
+      status,
+      attempts.length + " attempt" + (attempts.length === 1 ? "" : "s"),
+      "ok"
+    );
+
+    attempts.forEach((att) => {
+      const score = att.score || {};
+      const passed = !!score.passed;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "history-card";
+      btn.setAttribute("data-attempt-id", att.id);
+      btn.innerHTML =
+        `<div class="meta">${escapeHtml(formatDate(att.finishedAt))}` +
+        (att.subject ? ` · ${escapeHtml(att.subject)}` : "") +
+        `</div>` +
+        `<h3>${escapeHtml(att.testName || att.testId || "Attempt")}</h3>` +
+        `<div class="chip-row">` +
+        `<span class="chip ${passed ? "live" : ""}">${score.percent != null ? score.percent + "%" : "—"}</span>` +
+        `<span class="chip ${passed ? "pass" : "fail"}">${passed ? "Passed" : "Did not pass"}</span>` +
+        `</div>`;
+      btn.addEventListener("click", () => openAttemptDetail(att.id));
+      listEl.appendChild(btn);
+    });
+  }
+
+  async function openHistory() {
+    setRoute(null);
+    setStatus($("#history-status"), "Loading…", "");
+    showScreen("history");
+    try {
+      if (!getStoredKey()) {
+        showSetupScreen("Master Key required to load history.", "err");
+        return;
+      }
+      const data = await fetchCatalog();
+      state.catalog = data;
+      state.tests = publishedTests(data);
+      renderHistory();
+    } catch (err) {
+      if (err.code === "NO_KEY" || err.code === 401 || err.code === 403) {
+        showSetupScreen(err.message || "Key required.", "err");
+        return;
+      }
+      setStatus($("#history-status"), err.message || "Failed to load history.", "err");
+      renderHistory();
+    }
+  }
+
+  function openAttemptDetail(attemptId) {
+    const att = ((state.catalog && state.catalog.attempts) || []).find(
+      (a) => a && a.id === attemptId
+    );
+    if (!att) return;
+    state.viewingAttempt = att;
+    const score = att.score || {};
+    $("#detail-title").textContent = att.testName || att.testId || "Attempt";
+    $("#detail-meta").textContent =
+      [formatDate(att.finishedAt), att.subject, att.topic].filter(Boolean).join(" · ");
+    $("#detail-score").textContent =
+      (score.percent != null ? score.percent + "%" : "—") +
+      (score.passed ? " · Passed" : " · Did not pass");
+    $("#detail-summary").textContent =
+      `${score.correct != null ? score.correct : "—"} of ${score.total != null ? score.total : "—"} correct` +
+      (score.pointsEarned != null
+        ? ` · ${score.pointsEarned}/${score.pointsPossible} points`
+        : "") +
+      (att.durationSec != null ? ` · ${att.durationSec}s` : "");
+
+    const list = $("#detail-answers");
+    list.innerHTML = "";
+    (att.answers || []).forEach((a, i) => {
+      const div = document.createElement("div");
+      div.className = "review-item";
+      div.innerHTML =
+        `<div class="ri-head">` +
+        `<span class="ri-num">Q${i + 1}</span>` +
+        `<span class="ri-mark ${a.ok ? "ok" : "err"}">${a.ok ? "Correct" : "Missed"}</span>` +
+        `</div>` +
+        `<div class="ri-prompt">${escapeHtml(a.prompt || a.questionId || "")}</div>` +
+        `<div class="ri-line">Your answer: <strong>${escapeHtml(String(a.given == null ? "" : a.given))}</strong></div>` +
+        (!a.ok
+          ? `<div class="ri-line">Expected: <strong>${escapeHtml(String(a.expected == null ? "" : a.expected))}</strong></div>`
+          : "") +
+        (a.points != null
+          ? `<div class="ri-line">${a.ok ? a.points : 0}/${a.points} pts</div>`
+          : "");
+      list.appendChild(div);
+    });
+    setStatus($("#detail-status"), "", "");
+    showScreen("history-detail");
+  }
+
+  async function deleteViewingAttempt() {
+    const att = state.viewingAttempt;
+    if (!att || !att.id) return;
+    const ok = window.confirm(
+      "Delete this attempt from JSONBin? This cannot be undone."
+    );
+    if (!ok) return;
+    setStatus($("#detail-status"), "Deleting…", "");
+    try {
+      let catalog = state.catalog;
+      try {
+        catalog = await fetchCatalog();
+      } catch (_) {
+        if (!catalog) throw new Error("No catalog loaded.");
+      }
+      const next = (catalog.attempts || []).filter((a) => a && a.id !== att.id);
+      catalog.attempts = next;
+      await saveCatalog(catalog);
+      state.viewingAttempt = null;
+      setStatus($("#history-status"), "Attempt deleted.", "ok");
+      renderHistory();
+      showScreen("history");
+    } catch (err) {
+      setStatus($("#detail-status"), (err && err.message) || "Delete failed.", "err");
+    }
+  }
+
+  function captureReturnScreen() {
+    if ($("#screen-catalog").classList.contains("active")) return "catalog";
+    if ($("#screen-intro").classList.contains("active")) return "intro";
+    if ($("#screen-results").classList.contains("active")) return "results";
+    if ($("#screen-question").classList.contains("active")) return "question";
+    if ($("#screen-history").classList.contains("active")) return "history";
+    if ($("#screen-history-detail").classList.contains("active")) return "history-detail";
+    if ($("#screen-setup").classList.contains("active")) return "setup";
+    return "catalog";
   }
 
   function wireEvents() {
@@ -549,6 +947,8 @@
       setRoute(null);
       loadCatalogAndRoute();
     });
+
+    $("#btn-open-history").addEventListener("click", () => openHistory());
 
     $("#btn-start-test").addEventListener("click", startTest);
     $("#btn-intro-back").addEventListener("click", () => {
@@ -567,36 +967,61 @@
       setRoute(null);
       showScreen("catalog");
     });
+    $("#btn-retry-save").addEventListener("click", () => retrySave());
+
+    $("#btn-history-back").addEventListener("click", () => {
+      showScreen("catalog");
+    });
+    $("#btn-history-reload").addEventListener("click", () => openHistory());
+    $("#history-filter").addEventListener("change", () => {
+      state.historyFilterTestId = $("#history-filter").value || null;
+      renderHistory();
+    });
+
+    $("#btn-detail-back").addEventListener("click", () => {
+      state.viewingAttempt = null;
+      renderHistory();
+      showScreen("history");
+    });
+    $("#btn-delete-attempt").addEventListener("click", () => deleteViewingAttempt());
 
     $("#btn-settings").addEventListener("click", () => {
-      state.returnScreen =
-        $("#screen-catalog").classList.contains("active") ? "catalog" :
-        $("#screen-intro").classList.contains("active") ? "intro" :
-        $("#screen-results").classList.contains("active") ? "results" :
-        $("#screen-question").classList.contains("active") ? "question" : "catalog";
+      state.returnScreen = captureReturnScreen();
       const key = getStoredKey();
       $("#jsonbin-key").value = "";
       setStatus(
         $("#settings-status"),
-        key ? "A key is saved on this device." : "No key saved — public reads work without one.",
-        key ? "ok" : ""
+        key
+          ? "A Master Key is saved on this device (required for private bin)."
+          : "No key saved — paste the JSONBin Master Key to load and save.",
+        key ? "ok" : "err"
       );
       showScreen("settings");
     });
 
     $("#btn-settings-back").addEventListener("click", () => {
-      showScreen(state.returnScreen || "catalog");
-    });
-
-    $("#btn-save-settings").addEventListener("click", () => {
-      const val = ($("#jsonbin-key").value || "").trim();
-      if (!val) {
-        setStatus($("#settings-status"), "Paste a key to save, or use Clear key.", "err");
+      const ret = state.returnScreen || "catalog";
+      if (ret === "setup" || !getStoredKey()) {
+        loadCatalogAndRoute();
         return;
       }
+      showScreen(ret);
+    });
+
+    function saveKeyFromInput(inputSel, statusSel) {
+      const val = ($(inputSel).value || "").trim();
+      if (!val) {
+        setStatus($(statusSel), "Paste the JSONBin Master Key to save.", "err");
+        return false;
+      }
       setStoredKey(val);
-      $("#jsonbin-key").value = "";
-      setStatus($("#settings-status"), "Saved on this device. Reloading catalog…", "ok");
+      $(inputSel).value = "";
+      setStatus($(statusSel), "Saved on this device. Loading catalog…", "ok");
+      return true;
+    }
+
+    $("#btn-save-settings").addEventListener("click", () => {
+      if (!saveKeyFromInput("#jsonbin-key", "#settings-status")) return;
       loadCatalogAndRoute();
     });
 
@@ -604,13 +1029,25 @@
       setStoredKey("");
       $("#jsonbin-key").value = "";
       setStatus($("#settings-status"), "Key cleared from this device.", "");
+      showSetupScreen("Key cleared. Paste the Master Key to continue.", "");
+    });
+
+    $("#btn-setup-save").addEventListener("click", () => {
+      if (!saveKeyFromInput("#setup-jsonbin-key", "#setup-status")) return;
       loadCatalogAndRoute();
+    });
+
+    $("#btn-setup-settings").addEventListener("click", () => {
+      state.returnScreen = "setup";
+      $("#jsonbin-key").value = "";
+      setStatus($("#settings-status"), "Paste Master Key below.", "");
+      showScreen("settings");
     });
 
     window.addEventListener("hashchange", () => {
       const id = parseRoute();
       if (!id) {
-        showScreen("catalog");
+        if (getStoredKey() && state.catalog) showScreen("catalog");
         return;
       }
       if (state.tests.length) openIntro(id);
